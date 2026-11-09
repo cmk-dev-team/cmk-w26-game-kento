@@ -1,12 +1,13 @@
 {
     "name": "cmk-w26-game-kento",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "冬キャンプ2026 ゲームづくり 基礎検討：障害物レースのゲームづくりセット",
     "dependencies": {
         "core": "*"
     },
     "files": [
         "custom.ts",
+        "icons.jres",
         "README.md"
     ],
     "testFiles": [

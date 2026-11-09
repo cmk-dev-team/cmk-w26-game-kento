@@ -1,0 +1,23 @@
+W26Game.onStart(function () {
+    W26Game.setLimit(60)
+    W26Treasure.put(W26Color.Blue)
+    W26Monsters.spawn(W26Color.Green, W26Monster.Zombie)
+})
+W26Trick.onSwitch(W26Color.Red, function () {
+    W26Trick.bridge(W26Color.Red, 5)
+})
+W26Game.every(3, function () {
+    W26Trick.floorOff(W26Color.Yellow)
+    loops.pause(1500)
+    W26Trick.floorOn(W26Color.Yellow)
+})
+W26Treasure.onGet(function () { W26Treasure.addPoint(1) })
+W26Treasure.onPoint(3, function () { W26Game.clear() })
+W26Monsters.onCaught(function () { W26Treasure.addPoint(-1) })
+W26Monsters.onDown(function () { W26Treasure.addPoint(2) })
+W26Game.onGoal(function () { W26Game.clear() })
+W26Game.onTimeUp(function () { W26Game.gameOver() })
+W26Build.floor(5)
+W26Build.colorFloor(W26Color.Yellow, 3)
+W26Build.stairs(4, W26Stairs.Up)
+W26Game.kit()

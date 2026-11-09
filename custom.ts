@@ -1,6 +1,7 @@
 // キャンプゲームづくりセット v0.2（基礎検討・Aimy 2026-11-10）
 // ワールド側は「Aimyゲームづくり箱庭（基礎検討）」の w26set.js。ブロック → /scriptevent w26:〇〇、ワールド → /tell w26_〇〇。
 // Miya 11/10「図やテクスチャ、絵を使ってほしい。文字はなるだけへらす」→ 部品・モンスターは ワールドと同じ絵で選ぶ。
+// Miya 11/10「★はけっこう分かりやすい。変数と置きかえれるので」→ 点は ★ のまま（あとで変数に置きかえる入口）
 // Miya 11/10「謎解きかってくらい分からない。こどもがこれを見せてお母さんに説明できるか？」→ 物は絵、動きはことば。声に出すと文になるように
 // 場所は色でつなぐ（座標は使わない）。条件分岐は使わない（「てんが〇」も イベント）。
 // 「てん」「クリア」「スタートに もどす」は、きっかけを起こした人（とった・たおした・つかまった・ふんだ人）に効く（マルチ）。
@@ -236,14 +237,14 @@ namespace W26Treasure {
         player.onTellCommand("w26_tr_" + b, handler)
     }
 
-    //% blockId=w26_point block="てんを $n ふやす"
+    //% blockId=w26_point block="★を $n ふやす"
     //% n.defl=1
     //% weight=80
     export function addPoint(n: number): void {
         w26Send("point", "" + n)
     }
 
-    //% blockId=w26_on_point block="てんが $n に なったとき"
+    //% blockId=w26_on_point block="★が $n に なったとき"
     //% n.defl=5 n.min=1
     //% weight=70
     export function onPoint(n: number, handler: () => void): void {

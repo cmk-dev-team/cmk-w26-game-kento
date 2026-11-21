@@ -1,15 +1,19 @@
-// キャンプゲームづくりセット v0.3（基礎検討・Aimy 2026-11-21）
+// キャンプゲームづくりセット v0.4（基礎検討・Aimy 2026-11-22）
 // ワールド側は「Aimyゲームづくり箱庭（基礎検討）」の w26set.js。ブロック → /scriptevent w26:〇〇、ワールド → /tell w26_〇〇。
 //
-// ■ マルチの考え方（Miya 11/21）：作った子の MakeCode が「操作盤」。遊ぶ人は MakeCode を動かさなくてよい。
-//   ・ワールドは、遊ぶ人（そのコースのスタートに乗った人）に 0〜7 の番号をふる
-//   ・知らせの名前に その番号がつく（例：w26_sw_red_3 ＝ 3番の人が あかのスイッチを ふんだ）。だれでもないときは _a
-//   ・「とき」のブロックは 番号ごとに うけて、「いま だれの できごとか」（w26Who）をおぼえる
-//   ・「する」のブロックは w26Who を いっしょに送る → ワールドが その人にだけ効かせる（★・クリア・こうか・ワープ など）
-//   ・MakeCode は 待つ所（コマンドを送る・まつ）で ほかの「とき」に切りかわる。だから「する」のブロックは、
-//     送る前の w26Who をおぼえておき、送ったあとで もどす（2人が同時に ふんでも まざらない）
-//   ・ふつうの「一時停止」は もどさないので、このセットの「〇秒 まつ」を使う
-// ■ ことば：物は絵、動きはことば。声に出すと文になる（Miya 11/10）。★は のこす。対象は小2〜小6なので 要所は漢字（Miya 11/21）
+// ■ v0.4（Miya 11/22）
+//   ・分類は 役わりで4つ：イベント（きっかけ）／しかけ（コースに起きる）／あそぶ人（遊ぶ人に起きる）／ゲーム（時間・★・くりかえす）
+//     （前の「モンスター」「おたから」は ゲームの種類で分けた形だった）
+//   ・めじるし → おてつだいロボ（8色）。しかけは ロボの場所に起きる。橋は そこから ロボの むいている方へ
+//   ・おちたとき → アウトゆかに のったとき（どこが アウトかは、子どもが アウトゆかを しいて きめる）
+//   ・おたから（ブロック）→ アイテムを 手に入れたとき（チェストに 手で 入れておく）
+//   ・かぎ：〔アイテム〕を もって〔かぎつきとびら・チェスト〕に さわったとき（何を かぎにするかを 子どもが えらぶ）
+//   ・つかまった → こうげきされた／★は ふやす・へらす を 1つのブロックで／ゆか → きえるブロック（けす・もどす）
+//   ・MakeCode に もとからある分類は かくす（作品の pxt.json の toolboxFilter）。だから「くりかえす」は ここに ある
+// ■ マルチ（v0.3）：作った子の MakeCode が操作盤。知らせの名前に 遊ぶ人の番号（_0〜_7、だれでもない＝_a）。
+//   「する」は w26Who（いま だれの できごとか）を いっしょに送る。送ったあとで w26Who を もどす（2人が同時でも まざらない）
+// ■ 時間（v0.3.1）：ワールドが数える。「〇秒ごとに」は ワールドが知らせる。「〇秒 まつ」は 待たずに、あとの「する」に 何tick あとかを書いて送る
+// ■ ことば：物は絵、動きはことば。声に出すと文になる（Miya 11/10）。対象は小2〜小6（要所は漢字）
 
 enum W26Switch {
     //% block="あか" jres=W26Icon.sw_red
@@ -21,17 +25,25 @@ enum W26Switch {
     //% block="みどり" jres=W26Icon.sw_green
     Green = 3
 }
-enum W26Mark {
-    //% block="あか" jres=W26Icon.mark_red
+enum W26Robo {
+    //% block="あか" jres=W26Icon.robo_red
     Red = 0,
-    //% block="あお" jres=W26Icon.mark_blue
+    //% block="あお" jres=W26Icon.robo_blue
     Blue = 1,
-    //% block="きいろ" jres=W26Icon.mark_yellow
+    //% block="きいろ" jres=W26Icon.robo_yellow
     Yellow = 2,
-    //% block="みどり" jres=W26Icon.mark_green
+    //% block="みどり" jres=W26Icon.robo_green
     Green = 3,
-    //% block="ランダム" jres=W26Icon.mark_random
-    Random = 4
+    //% block="オレンジ" jres=W26Icon.robo_orange
+    Orange = 4,
+    //% block="むらさき" jres=W26Icon.robo_purple
+    Purple = 5,
+    //% block="みずいろ" jres=W26Icon.robo_aqua
+    Aqua = 6,
+    //% block="ピンク" jres=W26Icon.robo_pink
+    Pink = 7,
+    //% block="ランダム" jres=W26Icon.robo_random
+    Random = 8
 }
 enum W26Floor {
     //% block="あか" jres=W26Icon.floor_red
@@ -42,6 +54,34 @@ enum W26Floor {
     Yellow = 2,
     //% block="みどり" jres=W26Icon.floor_green
     Green = 3
+}
+enum W26Door {
+    //% block="あか" jres=W26Icon.door_red
+    Red = 0,
+    //% block="あお" jres=W26Icon.door_blue
+    Blue = 1,
+    //% block="きいろ" jres=W26Icon.door_yellow
+    Yellow = 2,
+    //% block="みどり" jres=W26Icon.door_green
+    Green = 3
+}
+enum W26Lock {
+    //% block="あかの とびら" jres=W26Icon.door_red
+    DoorRed = 0,
+    //% block="あおの とびら" jres=W26Icon.door_blue
+    DoorBlue = 1,
+    //% block="きいろの とびら" jres=W26Icon.door_yellow
+    DoorYellow = 2,
+    //% block="みどりの とびら" jres=W26Icon.door_green
+    DoorGreen = 3,
+    //% block="あかの チェスト" jres=W26Icon.chest_red
+    ChestRed = 4,
+    //% block="あおの チェスト" jres=W26Icon.chest_blue
+    ChestBlue = 5,
+    //% block="きいろの チェスト" jres=W26Icon.chest_yellow
+    ChestYellow = 6,
+    //% block="みどりの チェスト" jres=W26Icon.chest_green
+    ChestGreen = 7
 }
 enum W26Monster {
     //% block="ゾンビ" jres=W26Icon.m_zombie
@@ -78,47 +118,68 @@ enum W26Effect {
     SlowFall = 4
 }
 enum W26Item {
-    //% block="けん" jres=W26Icon.i_sword
-    Sword = 0,
-    //% block="ゆみ" jres=W26Icon.i_bow
-    Bow = 1,
-    //% block="つえ" jres=W26Icon.i_rod
-    Rod = 2,
+    //% block="かぎ" jres=W26Icon.i_key
+    Key = 0,
+    //% block="ダイヤ" jres=W26Icon.i_diamond
+    Diamond = 1,
+    //% block="エメラルド" jres=W26Icon.i_emerald
+    Emerald = 2,
+    //% block="きん" jres=W26Icon.i_gold
+    Gold = 3,
     //% block="りんご" jres=W26Icon.i_apple
-    Apple = 3
+    Apple = 4,
+    //% block="けん" jres=W26Icon.i_sword
+    Sword = 5,
+    //% block="ゆみ" jres=W26Icon.i_bow
+    Bow = 6,
+    //% block="つえ" jres=W26Icon.i_rod
+    Rod = 7
+}
+enum W26Change {
+    //% block="ふやす"
+    Add = 1,
+    //% block="へらす"
+    Sub = -1
 }
 
-const W26_COLOR_IDS = ["red", "blue", "yellow", "green", "random"]
+const W26_COLOR_IDS = ["red", "blue", "yellow", "green", "orange", "purple", "aqua", "pink", "random"]
+const W26_LOCK_IDS = ["door_red", "door_blue", "door_yellow", "door_green", "chest_red", "chest_blue", "chest_yellow", "chest_green"]
 const W26_MONSTER_IDS = ["zombie", "spider", "slime"]
 const W26_FX_IDS = ["thunder", "firework", "boom"]
 const W26_EFFECT_IDS = ["jump", "speed", "slow", "float", "slowfall"]
-const W26_ITEM_IDS = ["sword", "bow", "rod", "apple"]
+const W26_ITEM_IDS = ["key", "diamond", "emerald", "gold", "apple", "sword", "bow", "rod"]
 const W26_SLOTS = 8          // 同時に遊べる人数（ワールド側と同じ数）
 const W26_ALL = -1           // みんな（スタート・〇秒ごと・時間切れ）
 const W26_REPLAY = 100       // あとから加わった人のために「スタートしたとき」を もう一度うごかす（人に効くブロックだけ送る）
-let w26Running = false
-let w26Who = W26_ALL         // いま うごいている「とき」は だれの できごとか
+const W26_DELAY_CAP = 600    // 先に予約できる時間（秒）
+let w26Who = W26_ALL         // いま うごいている「イベント」は だれの できごとか
+let w26Delay = 0             // その中で「まつ」を足した合計（秒）
+let w26Everys: number[] = [] // 「〇秒ごとに」の秒（番号＝ならび順）。ワールドに わたす
 
-function w26WhoTag(who: number): string {
+function w26Head(who: number, delay: number): string {
     const w = who >= W26_REPLAY ? who - W26_REPLAY : who
-    return w < 0 ? "a" : "" + w
+    const t = Math.round(delay * 20)
+    return (w < 0 ? "a" : "" + w) + (t > 0 ? "@" + t : "") + ";"
 }
-// コース（めじるし・ゆか・モンスター・時間）に効くブロック。あとから加わった人のための やりなおしでは送らない
+// コース（ロボ・きえるブロック・とびら・モンスター・時間）に効く「する」。あとから加わった人のための やりなおしでは送らない
 function w26World(id: string, message: string): void {
-    const me = w26Who
-    if (me < W26_REPLAY) player.execute("scriptevent w26:" + id + " " + w26WhoTag(me) + ";" + message)
+    const me = w26Who, d = w26Delay
+    if (me < W26_REPLAY) player.execute("scriptevent w26:" + id + " " + w26Head(me, d) + message)
     w26Who = me
+    w26Delay = d
 }
-// 遊ぶ人に効くブロック（★・クリア・こうか・ワープ・アイテム・メッセージ）
+// 遊ぶ人に効く「する」（★・クリア・こうか・ワープ・アイテム・メッセージ）
 function w26Person(id: string, message: string): void {
-    const me = w26Who
-    player.execute("scriptevent w26:" + id + " " + w26WhoTag(me) + ";" + message)
+    const me = w26Who, d = w26Delay
+    player.execute("scriptevent w26:" + id + " " + w26Head(me, d) + message)
     w26Who = me
+    w26Delay = d
 }
-// 「とき」を、みんな（_a）と 番号ごと（_0〜_7）で うける
+// イベントを、みんな（_a）と 番号ごと（_0〜_7）で うける
 function w26On(name: string, handler: () => void): void {
     player.onTellCommand(name + "_a", function () {
         w26Who = W26_ALL
+        w26Delay = 0
         handler()
     })
     for (let i = 0; i < W26_SLOTS; i++) w26OnSlot(name, i, i, handler)
@@ -126,268 +187,266 @@ function w26On(name: string, handler: () => void): void {
 function w26OnSlot(name: string, slot: number, who: number, handler: () => void): void {
     player.onTellCommand(name + "_" + slot, function () {
         w26Who = who
+        w26Delay = 0
         handler()
         w26Who = W26_ALL
+        w26Delay = 0
+    })
+}
+function w26OnAll(name: string, handler: () => void): void {
+    player.onTellCommand(name, function () {
+        w26Who = W26_ALL
+        w26Delay = 0
+        handler()
     })
 }
 
-// ワールドからの よびかけに こたえる（プログラムが うごいているかを ワールドが たしかめる）
+// ワールドからの よびかけに こたえる（プログラムが うごいているかを ワールドが たしかめる）。「〇秒ごとに」の秒も わたす
 player.onTellCommand("w26_ping", function () {
-    player.execute("scriptevent w26:pong a;")
-})
-// ゲームが おわったら「〇秒ごとに」を とめる
-player.onTellCommand("w26_end", function () {
-    w26Running = false
+    player.execute("scriptevent w26:pong a;" + w26Everys.join(","))
 })
 
-//% color="#E04A3A" weight=100 block="ゲーム" icon="" groups='["とき", "する"]'
-namespace W26Game {
+//% color="#E04A3A" weight=100 block="イベント" icon="" groups='["ゲーム", "コース", "アイテム", "モンスター", "時間・★"]'
+namespace W26Event {
     //% blockId=w26_on_start block="スタートしたとき"
-    //% group="とき" weight=100
+    //% group="ゲーム" weight=100
     export function onStart(handler: () => void): void {
-        player.onTellCommand("w26_start", function () {
-            w26Running = true
-            w26Who = W26_ALL
-            handler()
-        })
+        w26OnAll("w26_start", handler)
         // ゲームのとちゅうで加わった人：人に効くブロックだけ、その人に もう一度
         for (let i = 0; i < W26_SLOTS; i++) w26OnSlot("w26_join", i, W26_REPLAY + i, handler)
     }
 
     //% blockId=w26_on_goal block="ゴールしたとき"
-    //% group="とき" weight=90
+    //% group="ゲーム" weight=95
     export function onGoal(handler: () => void): void {
         w26On("w26_goal", handler)
     }
 
-    //% blockId=w26_every block="$seconds 秒ごとに"
-    //% seconds.defl=3 seconds.min=1 seconds.max=60
-    //% group="とき" weight=80
-    export function every(seconds: number, handler: () => void): void {
-        loops.runInBackground(function () {
-            while (true) {
-                loops.pause(Math.max(1, seconds) * 1000)
-                if (w26Running) {
-                    w26Who = W26_ALL
-                    handler()
-                }
-            }
-        })
-    }
-
-    //% blockId=w26_on_timeup block="時間ぎれに なったとき"
-    //% group="とき" weight=70
-    export function onTimeUp(handler: () => void): void {
-        player.onTellCommand("w26_timeup", function () {
-            w26Who = W26_ALL
-            handler()
-        })
-    }
-
-    //% blockId=w26_limit block="$seconds 秒で おわりに する"
-    //% seconds.defl=60 seconds.min=0 seconds.max=600
-    //% group="する" weight=60
-    export function setLimit(seconds: number): void {
-        w26World("limit", "" + Math.max(0, seconds))
-    }
-
-    //% blockId=w26_wait block="$seconds 秒 まつ"
-    //% seconds.defl=1 seconds.min=0 seconds.max=60
-    //% group="する" weight=55
-    export function wait(seconds: number): void {
-        const me = w26Who
-        loops.pause(Math.max(0, seconds) * 1000)
-        w26Who = me
-    }
-
-    //% blockId=w26_clear block="クリアに する"
-    //% group="する" weight=50
-    export function clear(): void {
-        w26Person("clear", "")
-    }
-
-    //% blockId=w26_gameover block="ゲームオーバーに する"
-    //% group="する" weight=40
-    export function gameOver(): void {
-        w26Person("gameover", "")
-    }
-
-    //% blockId=w26_kit block="ぶひんを もらう"
-    //% group="する" weight=10
-    export function kit(): void {
-        player.execute("scriptevent w26:kit a;")
-    }
-}
-
-//% color="#E8A202" weight=90 block="しかけ" icon=""
-namespace W26Trick {
     //% blockId=w26_on_switch block="$sw の スイッチを ふんだとき"
     //% sw.fieldEditor="imagedropdown" sw.fieldOptions.columns=4 sw.fieldOptions.width=200
-    //% weight=100
+    //% group="コース" weight=90
     export function onSwitch(sw: W26Switch, handler: () => void): void {
         w26On("w26_sw_" + W26_COLOR_IDS[sw], handler)
     }
 
-    //% blockId=w26_power block="$mark の めじるしを $power に する"
-    //% mark.fieldEditor="imagedropdown" mark.fieldOptions.columns=5 mark.fieldOptions.width=250
-    //% power.fieldEditor="imagedropdown" power.fieldOptions.columns=2 power.fieldOptions.width=100
-    //% weight=95
-    export function power(mark: W26Mark, power: W26Power): void {
-        w26World("power", W26_COLOR_IDS[mark] + "|" + (power == W26Power.On ? "on" : "off"))
+    //% blockId=w26_on_out block="アウトゆかに のったとき"
+    //% group="コース" weight=85
+    export function onOut(handler: () => void): void {
+        w26On("w26_out", handler)
     }
 
-    //% blockId=w26_bridge block="$mark の めじるしから はしを $length マス だす"
-    //% mark.fieldEditor="imagedropdown" mark.fieldOptions.columns=5 mark.fieldOptions.width=250
-    //% length.defl=3 length.min=1 length.max=64
-    //% weight=90
-    export function bridge(mark: W26Mark, length: number): void {
-        w26World("bridge", W26_COLOR_IDS[mark] + "|" + length)
+    //% blockId=w26_on_lock block="$item を もって $lock に さわったとき"
+    //% item.fieldEditor="imagedropdown" item.fieldOptions.columns=4 item.fieldOptions.width=200
+    //% lock.fieldEditor="imagedropdown" lock.fieldOptions.columns=4 lock.fieldOptions.width=200
+    //% group="コース" weight=80
+    export function onLock(item: W26Item, lock: W26Lock, handler: () => void): void {
+        w26On("w26_lock_" + W26_LOCK_IDS[lock] + "_" + W26_ITEM_IDS[item], handler)
     }
 
-    //% blockId=w26_floor_off block="$floor の ゆかを けす"
-    //% floor.fieldEditor="imagedropdown" floor.fieldOptions.columns=4 floor.fieldOptions.width=200
-    //% weight=80
-    export function floorOff(floor: W26Floor): void {
-        w26World("floor_off", W26_COLOR_IDS[floor])
+    //% blockId=w26_on_got block="$item を 手に入れたとき"
+    //% item.fieldEditor="imagedropdown" item.fieldOptions.columns=4 item.fieldOptions.width=200
+    //% group="アイテム" weight=75
+    export function onGot(item: W26Item, handler: () => void): void {
+        w26On("w26_got_" + W26_ITEM_IDS[item], handler)
     }
 
-    //% blockId=w26_floor_on block="$floor の ゆかを だす"
-    //% floor.fieldEditor="imagedropdown" floor.fieldOptions.columns=4 floor.fieldOptions.width=200
-    //% weight=70
-    export function floorOn(floor: W26Floor): void {
-        w26World("floor_on", W26_COLOR_IDS[floor])
-    }
-
-    //% blockId=w26_fx block="$mark の めじるしに $fx を おこす"
-    //% mark.fieldEditor="imagedropdown" mark.fieldOptions.columns=5 mark.fieldOptions.width=250
-    //% fx.fieldEditor="imagedropdown" fx.fieldOptions.columns=3 fx.fieldOptions.width=150
-    //% weight=60
-    export function fx(mark: W26Mark, fx: W26Fx): void {
-        w26World("fx", W26_COLOR_IDS[mark] + "|" + W26_FX_IDS[fx])
-    }
-}
-
-//% color="#6C3A8E" weight=85 block="モンスター" icon=""
-namespace W26Monsters {
-    //% blockId=w26_monster block="$mark の めじるしに $kind を だす"
-    //% mark.fieldEditor="imagedropdown" mark.fieldOptions.columns=5 mark.fieldOptions.width=250
-    //% kind.fieldEditor="imagedropdown" kind.fieldOptions.columns=3 kind.fieldOptions.width=150
-    //% weight=100
-    export function spawn(mark: W26Mark, kind: W26Monster): void {
-        w26World("monster", W26_COLOR_IDS[mark] + "|" + W26_MONSTER_IDS[kind])
-    }
-
-    //% blockId=w26_on_caught block="モンスターに つかまったとき"
-    //% weight=90
-    export function onCaught(handler: () => void): void {
-        w26On("w26_caught", handler)
+    //% blockId=w26_on_use block="$item を つかったとき"
+    //% item.fieldEditor="imagedropdown" item.fieldOptions.columns=4 item.fieldOptions.width=200
+    //% group="アイテム" weight=70
+    export function onUse(item: W26Item, handler: () => void): void {
+        w26On("w26_use_" + W26_ITEM_IDS[item], handler)
     }
 
     //% blockId=w26_on_monster_down block="モンスターを たおしたとき"
-    //% weight=80
+    //% group="モンスター" weight=65
     export function onDown(handler: () => void): void {
         w26On("w26_monster_down", handler)
     }
-}
 
-//% color="#02AC8F" weight=80 block="おたから" icon=""
-namespace W26Treasure {
-    //% blockId=w26_treasure block="$mark の めじるしに $b を おたからとして おく"
-    //% mark.fieldEditor="imagedropdown" mark.fieldOptions.columns=5 mark.fieldOptions.width=250
-    //% b.shadow=minecraftBlock
-    //% weight=100
-    export function put(mark: W26Mark, b: number): void {
-        // えらんだブロックを 頭の上 60 に いちど置く → ワールドが読んで おたからにし、けす（ジェットコースターロボと同じ）
-        const me = w26Who
-        if (me >= W26_REPLAY) return
-        blocks.place(b, pos(0, 60, 0))
-        w26Who = me
-        w26World("treasure", W26_COLOR_IDS[mark] + "|" + b)
+    //% blockId=w26_on_hit block="モンスターに こうげきされたとき"
+    //% group="モンスター" weight=60
+    export function onHit(handler: () => void): void {
+        w26On("w26_hit", handler)
     }
 
-    //% blockId=w26_on_treasure block="おたからを とったとき"
-    //% weight=90
-    export function onGet(handler: () => void): void {
-        w26On("w26_treasure", handler)
+    //% blockId=w26_on_dead block="やられたとき"
+    //% group="モンスター" weight=55
+    export function onDead(handler: () => void): void {
+        w26On("w26_dead", handler)
     }
 
-    //% blockId=w26_on_treasure_block block="おたから $b を とったとき"
-    //% b.shadow=minecraftBlock
-    //% weight=85
-    export function onGetBlock(b: number, handler: () => void): void {
-        w26On("w26_tr_" + b, handler)
+    //% blockId=w26_every block="$seconds 秒ごとに"
+    //% seconds.defl=3 seconds.min=1 seconds.max=60
+    //% group="時間・★" weight=50
+    export function every(seconds: number, handler: () => void): void {
+        // 時間は ワールドが数える。ここは 番号と秒を おぼえて、知らせを待つだけ
+        const id = w26Everys.length
+        w26Everys.push(Math.max(1, seconds))
+        w26OnAll("w26_every_" + id, handler)
     }
 
-    //% blockId=w26_point block="★を $n ふやす"
-    //% n.defl=1
-    //% weight=80
-    export function addPoint(n: number): void {
-        w26Person("point", "" + n)
-    }
-
-    //% blockId=w26_point_sub block="★を $n へらす"
-    //% n.defl=1 n.min=1
-    //% weight=75
-    export function subPoint(n: number): void {
-        w26Person("point", "" + (0 - n))
+    //% blockId=w26_on_timeup block="時間ぎれに なったとき"
+    //% group="時間・★" weight=45
+    export function onTimeUp(handler: () => void): void {
+        w26OnAll("w26_timeup", handler)
     }
 
     //% blockId=w26_on_point block="★が $n に なったとき"
     //% n.defl=5 n.min=1
-    //% weight=70
+    //% group="時間・★" weight=40
     export function onPoint(n: number, handler: () => void): void {
         w26On("w26_point_" + n, handler)
     }
 }
 
-// 名前は「あそぶ人」（MakeCode に もとからある「プレイヤー」と かぶらないように）
-//% color="#2E7D32" weight=75 block="あそぶ人" icon="" groups='["とき", "する"]'
-namespace W26Player {
-    //% blockId=w26_on_fall block="おちたとき"
-    //% group="とき" weight=100
-    export function onFall(handler: () => void): void {
-        w26On("w26_fall", handler)
+//% color="#E8A202" weight=90 block="しかけ" icon=""
+namespace W26Trick {
+    //% blockId=w26_power block="$robo の ロボの ばしょを $power に する"
+    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=5 robo.fieldOptions.width=250
+    //% power.fieldEditor="imagedropdown" power.fieldOptions.columns=2 power.fieldOptions.width=100
+    //% weight=100
+    export function power(robo: W26Robo, power: W26Power): void {
+        w26World("power", W26_COLOR_IDS[robo] + "|" + (power == W26Power.On ? "on" : "off"))
     }
 
-    //% blockId=w26_on_use block="$item を つかったとき"
+    //% blockId=w26_bridge block="$robo の ロボの ばしょから はしを $length マス だす"
+    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=5 robo.fieldOptions.width=250
+    //% length.defl=3 length.min=1 length.max=64
+    //% weight=90
+    export function bridge(robo: W26Robo, length: number): void {
+        w26World("bridge", W26_COLOR_IDS[robo] + "|" + length)
+    }
+
+    //% blockId=w26_monster block="$robo の ロボの ばしょに $kind を だす"
+    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=5 robo.fieldOptions.width=250
+    //% kind.fieldEditor="imagedropdown" kind.fieldOptions.columns=3 kind.fieldOptions.width=150
+    //% weight=85
+    export function spawn(robo: W26Robo, kind: W26Monster): void {
+        w26World("monster", W26_COLOR_IDS[robo] + "|" + W26_MONSTER_IDS[kind])
+    }
+
+    //% blockId=w26_fx block="$robo の ロボの ばしょに $fx を おこす"
+    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=5 robo.fieldOptions.width=250
+    //% fx.fieldEditor="imagedropdown" fx.fieldOptions.columns=3 fx.fieldOptions.width=150
+    //% weight=80
+    export function fx(robo: W26Robo, fx: W26Fx): void {
+        w26World("fx", W26_COLOR_IDS[robo] + "|" + W26_FX_IDS[fx])
+    }
+
+    //% blockId=w26_floor_off block="$floor の きえるブロックを けす"
+    //% floor.fieldEditor="imagedropdown" floor.fieldOptions.columns=4 floor.fieldOptions.width=200
+    //% weight=70
+    export function floorOff(floor: W26Floor): void {
+        w26World("floor_off", W26_COLOR_IDS[floor])
+    }
+
+    //% blockId=w26_floor_on block="$floor の きえるブロックを もどす"
+    //% floor.fieldEditor="imagedropdown" floor.fieldOptions.columns=4 floor.fieldOptions.width=200
+    //% weight=65
+    export function floorOn(floor: W26Floor): void {
+        w26World("floor_on", W26_COLOR_IDS[floor])
+    }
+
+    //% blockId=w26_door_open block="$door の とびらを ひらく"
+    //% door.fieldEditor="imagedropdown" door.fieldOptions.columns=4 door.fieldOptions.width=200
+    //% weight=60
+    export function doorOpen(door: W26Door): void {
+        w26World("door_open", W26_COLOR_IDS[door])
+    }
+}
+
+//% color="#2E7D32" weight=80 block="あそぶ人" icon=""
+namespace W26Player {
+    //% blockId=w26_give block="$item を あげる"
     //% item.fieldEditor="imagedropdown" item.fieldOptions.columns=4 item.fieldOptions.width=200
-    //% group="とき" weight=90
-    export function onUse(item: W26Item, handler: () => void): void {
-        w26On("w26_use_" + W26_ITEM_IDS[item], handler)
+    //% weight=100
+    export function give(item: W26Item): void {
+        w26Person("give", W26_ITEM_IDS[item])
     }
 
     //% blockId=w26_effect block="$effect を $seconds 秒 つける"
     //% effect.fieldEditor="imagedropdown" effect.fieldOptions.columns=5 effect.fieldOptions.width=250
     //% seconds.defl=5 seconds.min=1 seconds.max=60
-    //% group="する" weight=80
+    //% weight=90
     export function effect(effect: W26Effect, seconds: number): void {
         w26Person("effect", W26_EFFECT_IDS[effect] + "|" + seconds)
     }
 
-    //% blockId=w26_warp block="$mark の めじるしへ ワープさせる"
-    //% mark.fieldEditor="imagedropdown" mark.fieldOptions.columns=5 mark.fieldOptions.width=250
-    //% group="する" weight=70
-    export function warp(mark: W26Mark): void {
-        w26Person("warp", W26_COLOR_IDS[mark])
+    //% blockId=w26_warp block="$robo の ロボの ばしょへ ワープさせる"
+    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=5 robo.fieldOptions.width=250
+    //% weight=80
+    export function warp(robo: W26Robo): void {
+        w26Person("warp", W26_COLOR_IDS[robo])
     }
 
     //% blockId=w26_back block="スタートに もどす"
-    //% group="する" weight=65
+    //% weight=70
     export function back(): void {
         w26Person("back", "")
     }
 
-    //% blockId=w26_give block="$item を あげる"
-    //% item.fieldEditor="imagedropdown" item.fieldOptions.columns=4 item.fieldOptions.width=200
-    //% group="する" weight=60
-    export function give(item: W26Item): void {
-        w26Person("give", W26_ITEM_IDS[item])
-    }
-
     //% blockId=w26_say block="メッセージ $text を だす"
     //% text.defl="やったね！"
-    //% group="する" weight=50
+    //% weight=60
     export function say(text: string): void {
         w26Person("say", text)
+    }
+}
+
+//% color="#5B6BC0" weight=70 block="ゲーム" icon=""
+namespace W26Game {
+    //% blockId=w26_limit block="$seconds 秒で おわりに する"
+    //% seconds.defl=60 seconds.min=0 seconds.max=600
+    //% weight=100
+    export function setLimit(seconds: number): void {
+        w26World("limit", "" + Math.max(0, seconds))
+    }
+
+    //% blockId=w26_point block="★を $n $change"
+    //% n.defl=1 n.min=1
+    //% weight=90
+    export function point(n: number, change: W26Change): void {
+        w26Person("point", "" + (change == W26Change.Sub ? 0 - n : n))
+    }
+
+    //% blockId=w26_wait block="$seconds 秒 まつ"
+    //% seconds.defl=1 seconds.min=0 seconds.max=60
+    //% weight=80
+    export function wait(seconds: number): void {
+        const s = Math.max(0, seconds)
+        if (w26Delay + s <= W26_DELAY_CAP) {
+            w26Delay += s      // 待たない。あとの「する」が そのぶん おくれて動く（ワールドが数える）
+            return
+        }
+        const me = w26Who, d = w26Delay
+        loops.pause(s * 1000)
+        w26Who = me
+        w26Delay = d
+    }
+
+    //% blockId=w26_repeat block="$times 回 くりかえす"
+    //% times.defl=4 times.min=1 times.max=100
+    //% handlerStatement=1
+    //% weight=70
+    export function repeat(times: number, handler: () => void): void {
+        for (let i = 0; i < times; i++) handler()
+    }
+
+    //% blockId=w26_clear block="クリアに する"
+    //% weight=60
+    export function clear(): void {
+        w26Person("clear", "")
+    }
+
+    //% blockId=w26_gameover block="ゲームオーバーに する"
+    //% weight=50
+    export function gameOver(): void {
+        w26Person("gameover", "")
+    }
+
+    //% blockId=w26_kit block="ぶひんを もらう"
+    //% weight=10
+    export function kit(): void {
+        player.execute("scriptevent w26:kit a;")
     }
 }

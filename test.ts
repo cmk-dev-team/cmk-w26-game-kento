@@ -1,34 +1,37 @@
-// v0.3 の全ブロックを1回ずつ呼ぶ（ビルドが通るかを見るため。遊べるゲームではない）
-W26Game.onStart(function () {
+// v0.4 の全ブロックを1回ずつ呼ぶ（ビルドが通るかを見るため。遊べるゲームではない）
+W26Event.onStart(function () {
     W26Game.setLimit(60)
-    W26Treasure.put(W26Mark.Blue, GOLD_BLOCK)
-    W26Monsters.spawn(W26Mark.Green, W26Monster.Zombie)
+    W26Trick.spawn(W26Robo.Green, W26Monster.Zombie)
     W26Player.give(W26Item.Sword)
     W26Player.say("スタート！")
 })
-W26Trick.onSwitch(W26Switch.Red, function () {
-    W26Trick.bridge(W26Mark.Red, 5)
-    W26Trick.power(W26Mark.Blue, W26Power.On)
-    W26Game.wait(2)
-    W26Trick.power(W26Mark.Blue, W26Power.Off)
+W26Event.onSwitch(W26Switch.Red, function () {
+    W26Trick.bridge(W26Robo.Red, 5)
+    W26Game.repeat(3, function () {
+        W26Trick.power(W26Robo.Blue, W26Power.On)
+        W26Game.wait(1)
+        W26Trick.power(W26Robo.Blue, W26Power.Off)
+        W26Game.wait(1)
+    })
 })
-W26Trick.onSwitch(W26Switch.Blue, function () {
+W26Event.onSwitch(W26Switch.Blue, function () {
     W26Player.effect(W26Effect.Jump, 5)
-    W26Player.warp(W26Mark.Random)
+    W26Player.warp(W26Robo.Random)
 })
-W26Game.every(3, function () {
+W26Event.every(3, function () {
     W26Trick.floorOff(W26Floor.Yellow)
     W26Game.wait(1.5)
     W26Trick.floorOn(W26Floor.Yellow)
-    W26Trick.fx(W26Mark.Random, W26Fx.Thunder)
+    W26Trick.fx(W26Robo.Pink, W26Fx.Thunder)
 })
-W26Treasure.onGet(function () { W26Treasure.addPoint(1) })
-W26Treasure.onGetBlock(DIAMOND_BLOCK, function () { W26Treasure.addPoint(5) })
-W26Treasure.onPoint(3, function () { W26Game.clear() })
-W26Monsters.onCaught(function () { W26Treasure.subPoint(1) })
-W26Monsters.onDown(function () { W26Treasure.addPoint(2) })
-W26Player.onFall(function () { W26Player.back() })
-W26Player.onUse(W26Item.Rod, function () { W26Trick.fx(W26Mark.Red, W26Fx.Firework) })
-W26Game.onGoal(function () { W26Game.clear() })
-W26Game.onTimeUp(function () { W26Game.gameOver() })
+W26Event.onOut(function () { W26Player.back() })
+W26Event.onGot(W26Item.Diamond, function () { W26Game.point(1, W26Change.Add) })
+W26Event.onLock(W26Item.Key, W26Lock.DoorRed, function () { W26Trick.doorOpen(W26Door.Red) })
+W26Event.onUse(W26Item.Rod, function () { W26Trick.fx(W26Robo.Red, W26Fx.Firework) })
+W26Event.onDown(function () { W26Game.point(2, W26Change.Add) })
+W26Event.onHit(function () { W26Game.point(1, W26Change.Sub) })
+W26Event.onDead(function () { W26Game.gameOver() })
+W26Event.onPoint(3, function () { W26Game.clear() })
+W26Event.onGoal(function () { W26Game.clear() })
+W26Event.onTimeUp(function () { W26Game.gameOver() })
 W26Game.kit()

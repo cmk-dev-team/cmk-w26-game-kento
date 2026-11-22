@@ -4,6 +4,7 @@
 // ■ v0.4（Miya 11/22）
 //   ・分類は 役わりで4つ：イベント（きっかけ）／しかけ（コースに起きる）／あそぶ人（遊ぶ人に起きる）／ゲーム（時間・★・くりかえす）
 //     （前の「モンスター」「おたから」は ゲームの種類で分けた形だった）
+//   ・マーカー（v0.4.3・Miya 11/23）：見た目は うかぶ ひしがた・12色。「〔色〕の マーカーを 〔ブロック〕に する／もとに もどす」（前の ON・はし を まとめた。向きは つかわない）
 //   ・めじるし → おてつだいロボ（8色）。しかけは ロボの場所に起きる。橋は そこから ロボの むいている方へ
 //   ・おちたとき → アウトゆかに のったとき（どこが アウトかは、子どもが アウトゆかを しいて きめる）
 //   ・おたから（ブロック）→ アイテムを 手に入れたとき（チェストに 手で 入れておく）
@@ -48,8 +49,16 @@ enum W26Robo {
     Aqua = 6,
     //% block="ピンク" jres=W26Icon.robo_pink
     Pink = 7,
+    //% block="くろ" jres=W26Icon.robo_black
+    Black = 8,
+    //% block="しろ" jres=W26Icon.robo_white
+    White = 9,
+    //% block="ちゃいろ" jres=W26Icon.robo_brown
+    Brown = 10,
+    //% block="きみどり" jres=W26Icon.robo_lime
+    Lime = 11,
     //% block="ランダム" jres=W26Icon.robo_random
-    Random = 8
+    Random = 12
 }
 enum W26Floor {
     //% block="あか" jres=W26Icon.floor_red
@@ -101,12 +110,6 @@ enum W26Monster {
     //% block="スライム" jres=W26Icon.m_slime
     Slime = 2
 }
-enum W26Power {
-    //% block="ON" jres=W26Icon.pw_on
-    On = 1,
-    //% block="OFF" jres=W26Icon.pw_off
-    Off = 0
-}
 enum W26Fx {
     //% block="かみなり" jres=W26Icon.fx_thunder
     Thunder = 0,
@@ -134,7 +137,7 @@ enum W26Change {
     Sub = -1
 }
 
-const W26_COLOR_IDS = ["red", "blue", "yellow", "green", "orange", "purple", "aqua", "pink", "random"]
+const W26_COLOR_IDS = ["red", "blue", "yellow", "green", "orange", "purple", "aqua", "pink", "black", "white", "brown", "lime", "random"]
 const W26_LOCK_IDS = ["door_red", "door_blue", "door_yellow", "door_green", "chest_normal", "chest_trapped", "chest_copper", "chest_exposed", "chest_weathered", "chest_oxidized"]
 const W26_MONSTER_IDS = ["zombie", "spider", "slime"]
 const W26_FX_IDS = ["thunder", "firework", "boom"]
@@ -320,32 +323,32 @@ namespace W26Event {
 
 //% color="#E8A202" weight=90 block="しかけ" icon=""
 namespace W26Trick {
-    //% blockId=w26_power block="$robo の ロボの ばしょを $power に する"
-    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=5 robo.fieldOptions.width=250
-    //% power.fieldEditor="imagedropdown" power.fieldOptions.columns=2 power.fieldOptions.width=100
+    //% blockId=w26_marker_set block="$robo の マーカーを $block に する"
+    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=7 robo.fieldOptions.width=350
+    //% block.shadow=minecraftBlock
     //% weight=100
-    export function power(robo: W26Robo, power: W26Power): void {
-        w26World("power", W26_COLOR_IDS[robo] + "|" + (power == W26Power.On ? "on" : "off"))
+    export function markerSet(robo: W26Robo, block: number): void {
+        // その色の マーカーを ぜんぶ、えらんだ ブロックに する（はし・かべ・かいだんは マーカーの ならべ方で きまる。Miya 11/23）
+        w26World("marker_set", W26_COLOR_IDS[robo] + "|" + blocks.nameOfBlock(block))
     }
 
-    //% blockId=w26_bridge block="$robo の ロボの ばしょから はしを $length マス だす"
-    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=5 robo.fieldOptions.width=250
-    //% length.defl=3 length.min=1 length.max=64
-    //% weight=90
-    export function bridge(robo: W26Robo, length: number): void {
-        w26World("bridge", W26_COLOR_IDS[robo] + "|" + length)
+    //% blockId=w26_marker_back block="$robo の マーカーを もとに もどす"
+    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=7 robo.fieldOptions.width=350
+    //% weight=95
+    export function markerBack(robo: W26Robo): void {
+        w26World("marker_back", W26_COLOR_IDS[robo])
     }
 
-    //% blockId=w26_monster block="$robo の ロボの ばしょに $kind を だす"
-    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=5 robo.fieldOptions.width=250
+    //% blockId=w26_monster block="$robo の マーカーで $kind を だす"
+    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=7 robo.fieldOptions.width=350
     //% kind.fieldEditor="imagedropdown" kind.fieldOptions.columns=3 kind.fieldOptions.width=150
     //% weight=85
     export function spawn(robo: W26Robo, kind: W26Monster): void {
         w26World("monster", W26_COLOR_IDS[robo] + "|" + W26_MONSTER_IDS[kind])
     }
 
-    //% blockId=w26_fx block="$robo の ロボの ばしょに $fx を おこす"
-    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=5 robo.fieldOptions.width=250
+    //% blockId=w26_fx block="$robo の マーカーで $fx を おこす"
+    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=7 robo.fieldOptions.width=350
     //% fx.fieldEditor="imagedropdown" fx.fieldOptions.columns=3 fx.fieldOptions.width=150
     //% weight=80
     export function fx(robo: W26Robo, fx: W26Fx): void {
@@ -395,16 +398,18 @@ namespace W26Player {
         w26Person("give", w26ItemName(item))
     }
 
-    //% blockId=w26_effect block="$effect を $seconds 秒 つける"
+    //% blockId=w26_effect block="$effect を $seconds 秒 つける　つよさ $level"
     //% effect.fieldEditor="imagedropdown" effect.fieldOptions.columns=5 effect.fieldOptions.width=250
     //% seconds.defl=5 seconds.min=1 seconds.max=60
+    //% level.defl=1 level.min=1 level.max=5
     //% weight=90
-    export function effect(effect: W26Effect, seconds: number): void {
-        w26Person("effect", W26_EFFECT_IDS[effect] + "|" + seconds)
+    export function effect(effect: W26Effect, seconds: number, level: number): void {
+        // つよさ 1〜5（マイクラの レベル I〜V）。上を 5で とめるのは、ジャンプ・うくが 強すぎると コースの 外へ 飛ぶため（Miya 11/23「強さも 決めたい」）
+        w26Person("effect", W26_EFFECT_IDS[effect] + "|" + seconds + "|" + level)
     }
 
-    //% blockId=w26_warp block="$robo の ロボの ばしょへ ワープさせる"
-    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=5 robo.fieldOptions.width=250
+    //% blockId=w26_warp block="$robo の マーカーへ ワープさせる"
+    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=7 robo.fieldOptions.width=350
     //% weight=80
     export function warp(robo: W26Robo): void {
         w26Person("warp", W26_COLOR_IDS[robo])

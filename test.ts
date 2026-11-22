@@ -2,7 +2,7 @@
 W26Event.onStart(function () {
     W26Game.setLimit(60)
     W26Trick.spawn(W26Robo.Green, W26Monster.Zombie)
-    W26Player.give(W26Item.Sword)
+    W26Player.give(STONE_SWORD)
     W26Player.say("スタート！")
 })
 W26Event.onSwitch(W26Switch.Red, function () {
@@ -25,10 +25,10 @@ W26Event.every(3, function () {
     W26Trick.fx(W26Robo.Pink, W26Fx.Thunder)
 })
 W26Event.onOut(function () { W26Player.back() })
-W26Event.onGot(W26Item.Diamond, function () { W26Game.point(1, W26Change.Add) })
-W26Event.onTouch(W26Lock.DoorRed, function () { W26Trick.keyOpen(W26Item.Key) })
-W26Event.onTouch(W26Lock.Copper, function () { W26Trick.keyOpen(W26Item.Key) })
-W26Event.onUse(W26Item.Rod, function () { W26Trick.fx(W26Robo.Red, W26Fx.Firework) })
+W26Event.onGot(DIAMOND, function () { W26Game.point(1, W26Change.Add) })
+W26Event.onTouch(W26Lock.DoorRed, function () { W26Trick.keyOpen(TRIPWIRE_HOOK) })
+W26Event.onTouch(W26Lock.Copper, function () { W26Trick.keyOpen(TRIPWIRE_HOOK) })
+W26Event.onUse(BLAZE_ROD, function () { W26Trick.fx(W26Robo.Red, W26Fx.Firework) })
 W26Event.onDown(function () { W26Game.point(2, W26Change.Add) })
 W26Event.onHit(function () { W26Game.point(1, W26Change.Sub) })
 W26Event.onDead(function () { W26Game.gameOver() })

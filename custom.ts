@@ -9,6 +9,7 @@
 //   ・おたから（ブロック）→ アイテムを 手に入れたとき（チェストに 手で 入れておく）
 //   ・かぎ（v0.4.1・Miya 11/22）：チェストは マイクラの物（ふつう・トラップ・銅4だんかい）。かぎを かける ブロックは ない
 //     「〔チェスト・とびら〕に さわったとき」→「もし〔アイテム〕を もっていたら ひらく そうでないなら ひらかない」を 1つのブロックで（Miya 11/22「分けないで・セット運用」）
+//     アイテムは マイクラの アイテムから 何でも えらべる（MakeCode の minecraftItem。ゲームの 名前〔blocks.nameOfBlock〕で ワールドに わたし、ワールドが ID に なおす。かぎ専用の アイテムは やめた・Miya 11/22「かぎけして 好きなアイテムに」）
 //     ひらく／ひらかない は 決まった形（逆には しない）。もっているかは ワールドが さわった しゅんかんに 見る（もちものを MakeCode に 送る形は 不安定なので やめた・Miya 11/22）
 //     チェスト：開くかは クリックの その場で きまる。だから スタート前（w26_ping）に「チェストに さわったとき」の 中を 下見して w26:guard で 教えておく
 //     とびら：さわったら key_open を 送り、ワールドが その人の もちものを 見て 消す
@@ -126,24 +127,6 @@ enum W26Effect {
     //% block="ゆっくり おちる" jres=W26Icon.e_slowfall
     SlowFall = 4
 }
-enum W26Item {
-    //% block="かぎ" jres=W26Icon.i_key
-    Key = 0,
-    //% block="ダイヤ" jres=W26Icon.i_diamond
-    Diamond = 1,
-    //% block="エメラルド" jres=W26Icon.i_emerald
-    Emerald = 2,
-    //% block="きん" jres=W26Icon.i_gold
-    Gold = 3,
-    //% block="りんご" jres=W26Icon.i_apple
-    Apple = 4,
-    //% block="けん" jres=W26Icon.i_sword
-    Sword = 5,
-    //% block="ゆみ" jres=W26Icon.i_bow
-    Bow = 6,
-    //% block="つえ" jres=W26Icon.i_rod
-    Rod = 7
-}
 enum W26Change {
     //% block="ふやす"
     Add = 1,
@@ -156,7 +139,10 @@ const W26_LOCK_IDS = ["door_red", "door_blue", "door_yellow", "door_green", "che
 const W26_MONSTER_IDS = ["zombie", "spider", "slime"]
 const W26_FX_IDS = ["thunder", "firework", "boom"]
 const W26_EFFECT_IDS = ["jump", "speed", "slow", "float", "slowfall"]
-const W26_ITEM_IDS = ["key", "diamond", "emerald", "gold", "apple", "sword", "bow", "rod"]
+let w26Watch: string[] = []  // 「〔アイテム〕を 手に入れたとき・つかったとき」で 見る アイテム（番号:名前）。スタート前に ワールドに わたす
+// アイテムは ゲームの 名前で ワールドに わたす（blocks.nameOfBlock。MEE で「Wheat Seeds」「Chainmail Helmet」と 返るのを 見た・Miya 11/23）
+function w26ItemName(item: number): string { return blocks.nameOfBlock(item) }
+function w26WatchItem(item: number): void { const e = item + ":" + w26ItemName(item); if (w26Watch.indexOf(e) < 0) w26Watch.push(e) }
 const W26_SLOTS = 8          // 同時に遊べる人数（ワールド側と同じ数）
 const W26_ALL = -1           // みんな（スタート・〇秒ごと・時間切れ）
 const W26_REPLAY = 100       // あとから加わった人のために「スタートしたとき」を もう一度うごかす（人に効くブロックだけ送る）
@@ -232,6 +218,7 @@ player.onTellCommand("w26_ping", function () {
     w26Who = W26_ALL
     w26Delay = 0
     player.execute("scriptevent w26:guard a;" + w26Guards.join(","))
+    player.execute("scriptevent w26:watch a;" + w26Watch.join(","))
     player.execute("scriptevent w26:pong a;" + w26Everys.join(","))
 })
 
@@ -274,17 +261,19 @@ namespace W26Event {
     }
 
     //% blockId=w26_on_got block="$item を 手に入れたとき"
-    //% item.fieldEditor="imagedropdown" item.fieldOptions.columns=4 item.fieldOptions.width=200
+    //% item.shadow=minecraftItem
     //% group="アイテム" weight=75
-    export function onGot(item: W26Item, handler: () => void): void {
-        w26On("w26_got_" + W26_ITEM_IDS[item], handler)
+    export function onGot(item: number, handler: () => void): void {
+        w26WatchItem(item)
+        w26On("w26_got_" + item, handler)
     }
 
     //% blockId=w26_on_use block="$item を つかったとき"
-    //% item.fieldEditor="imagedropdown" item.fieldOptions.columns=4 item.fieldOptions.width=200
+    //% item.shadow=minecraftItem
     //% group="アイテム" weight=70
-    export function onUse(item: W26Item, handler: () => void): void {
-        w26On("w26_use_" + W26_ITEM_IDS[item], handler)
+    export function onUse(item: number, handler: () => void): void {
+        w26WatchItem(item)
+        w26On("w26_use_" + item, handler)
     }
 
     //% blockId=w26_on_monster_down block="モンスターを たおしたとき"
@@ -379,14 +368,14 @@ namespace W26Trick {
 
     //% blockId=w26_key_open block="もし $item を もっていたら ひらく|そうでないなら ひらかない"
     //% inlineInputMode=external
-    //% item.fieldEditor="imagedropdown" item.fieldOptions.columns=4 item.fieldOptions.width=200
+    //% item.shadow=minecraftItem
     //% weight=62
-    export function keyOpen(item: W26Item): void {
+    export function keyOpen(item: number): void {
         // さわった とびら・チェストを、その人が item を もっていれば ひらく。もっていなければ ひらかない（チェストは その人だけ・はなれるまで）
         // もっているかは ワールドが さわった しゅんかんに 見る（どれを さわったかも ワールドが おぼえている）
         // チェストは 下見で 書きとめた ものを ワールドが つかう（さわった しゅんかんに きめる）。ここで 送るのは とびらの ため
-        if (w26Probe) { w26Guards.push(w26Probe + "=" + W26_ITEM_IDS[item]); return }
-        w26World("key_open", W26_ITEM_IDS[item])
+        if (w26Probe) { w26Guards.push(w26Probe + "=" + w26ItemName(item)); return }
+        w26World("key_open", w26ItemName(item))
     }
 
     //% blockId=w26_door_open block="$door の とびらを ひらく"
@@ -400,10 +389,10 @@ namespace W26Trick {
 //% color="#2E7D32" weight=80 block="あそぶ人" icon=""
 namespace W26Player {
     //% blockId=w26_give block="$item を あげる"
-    //% item.fieldEditor="imagedropdown" item.fieldOptions.columns=4 item.fieldOptions.width=200
+    //% item.shadow=minecraftItem
     //% weight=100
-    export function give(item: W26Item): void {
-        w26Person("give", W26_ITEM_IDS[item])
+    export function give(item: number): void {
+        w26Person("give", w26ItemName(item))
     }
 
     //% blockId=w26_effect block="$effect を $seconds 秒 つける"

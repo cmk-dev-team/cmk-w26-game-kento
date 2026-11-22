@@ -7,7 +7,12 @@
 //   ・めじるし → おてつだいロボ（8色）。しかけは ロボの場所に起きる。橋は そこから ロボの むいている方へ
 //   ・おちたとき → アウトゆかに のったとき（どこが アウトかは、子どもが アウトゆかを しいて きめる）
 //   ・おたから（ブロック）→ アイテムを 手に入れたとき（チェストに 手で 入れておく）
-//   ・かぎ：〔アイテム〕を もって〔かぎつきとびら・チェスト〕に さわったとき（何を かぎにするかを 子どもが えらぶ）
+//   ・かぎ（v0.4.1・Miya 11/22）：チェストは マイクラの物（ふつう・トラップ・銅4だんかい）。かぎを かける ブロックは ない
+//     「〔チェスト・とびら〕に さわったとき」→「もし〔アイテム〕を もっていたら ひらく そうでないなら ひらかない」を 1つのブロックで（Miya 11/22「分けないで・セット運用」）
+//     ひらく／ひらかない は 決まった形（逆には しない）。もっているかは ワールドが さわった しゅんかんに 見る（もちものを MakeCode に 送る形は 不安定なので やめた・Miya 11/22）
+//     チェスト：開くかは クリックの その場で きまる。だから スタート前（w26_ping）に「チェストに さわったとき」の 中を 下見して w26:guard で 教えておく
+//     とびら：さわったら key_open を 送り、ワールドが その人の もちものを 見て 消す
+//     チェストは ふつうは 開く。とじて おくのは この ブロックの「ひらかない」。とびら（専用）は 置いたときから とじていて「ひらく」で 消える
 //   ・つかまった → こうげきされた／★は ふやす・へらす を 1つのブロックで／ゆか → きえるブロック（けす・もどす）
 //   ・MakeCode に もとからある分類は かくす（作品の pxt.json の toolboxFilter）。だから「くりかえす」は ここに ある
 // ■ マルチ（v0.3）：作った子の MakeCode が操作盤。知らせの名前に 遊ぶ人の番号（_0〜_7、だれでもない＝_a）。
@@ -74,14 +79,18 @@ enum W26Lock {
     DoorYellow = 2,
     //% block="みどりの とびら" jres=W26Icon.door_green
     DoorGreen = 3,
-    //% block="あかの チェスト" jres=W26Icon.chest_red
-    ChestRed = 4,
-    //% block="あおの チェスト" jres=W26Icon.chest_blue
-    ChestBlue = 5,
-    //% block="きいろの チェスト" jres=W26Icon.chest_yellow
-    ChestYellow = 6,
-    //% block="みどりの チェスト" jres=W26Icon.chest_green
-    ChestGreen = 7
+    //% block="チェスト" jres=W26Icon.ch_chest
+    Chest = 4,
+    //% block="トラップチェスト" jres=W26Icon.ch_trapped
+    Trapped = 5,
+    //% block="どうの チェスト" jres=W26Icon.ch_copper
+    Copper = 6,
+    //% block="ふうかした どうの チェスト" jres=W26Icon.ch_exposed
+    Exposed = 7,
+    //% block="さびた どうの チェスト" jres=W26Icon.ch_weathered
+    Weathered = 8,
+    //% block="さんかした どうの チェスト" jres=W26Icon.ch_oxidized
+    Oxidized = 9
 }
 enum W26Monster {
     //% block="ゾンビ" jres=W26Icon.m_zombie
@@ -143,7 +152,7 @@ enum W26Change {
 }
 
 const W26_COLOR_IDS = ["red", "blue", "yellow", "green", "orange", "purple", "aqua", "pink", "random"]
-const W26_LOCK_IDS = ["door_red", "door_blue", "door_yellow", "door_green", "chest_red", "chest_blue", "chest_yellow", "chest_green"]
+const W26_LOCK_IDS = ["door_red", "door_blue", "door_yellow", "door_green", "chest_normal", "chest_trapped", "chest_copper", "chest_exposed", "chest_weathered", "chest_oxidized"]
 const W26_MONSTER_IDS = ["zombie", "spider", "slime"]
 const W26_FX_IDS = ["thunder", "firework", "boom"]
 const W26_EFFECT_IDS = ["jump", "speed", "slow", "float", "slowfall"]
@@ -154,6 +163,10 @@ const W26_REPLAY = 100       // あとから加わった人のために「スタ
 const W26_DELAY_CAP = 600    // 先に予約できる時間（秒）
 let w26Who = W26_ALL         // いま うごいている「イベント」は だれの できごとか
 let w26Delay = 0             // その中で「まつ」を足した合計（秒）
+let w26Probe = ""            // 「さわったとき」の 下見ちゅう（スタート前に 中を 1回 なぞって、どの チェストに かぎが いるかを ワールドに 教える）
+let w26Guards: string[] = [] // 下見で 見つけた「チェスト=アイテム」
+let w26TouchIds: string[] = []
+let w26TouchFns: (() => void)[] = []
 let w26Everys: number[] = [] // 「〇秒ごとに」の秒（番号＝ならび順）。ワールドに わたす
 
 function w26Head(who: number, delay: number): string {
@@ -164,6 +177,7 @@ function w26Head(who: number, delay: number): string {
 // コース（ロボ・きえるブロック・とびら・モンスター・時間）に効く「する」。あとから加わった人のための やりなおしでは送らない
 function w26World(id: string, message: string): void {
     const me = w26Who, d = w26Delay
+    if (w26Probe) return
     if (me < W26_REPLAY) player.execute("scriptevent w26:" + id + " " + w26Head(me, d) + message)
     w26Who = me
     w26Delay = d
@@ -171,6 +185,7 @@ function w26World(id: string, message: string): void {
 // 遊ぶ人に効く「する」（★・クリア・こうか・ワープ・アイテム・メッセージ）
 function w26Person(id: string, message: string): void {
     const me = w26Who, d = w26Delay
+    if (w26Probe) return
     player.execute("scriptevent w26:" + id + " " + w26Head(me, d) + message)
     w26Who = me
     w26Delay = d
@@ -202,7 +217,21 @@ function w26OnAll(name: string, handler: () => void): void {
 }
 
 // ワールドからの よびかけに こたえる（プログラムが うごいているかを ワールドが たしかめる）。「〇秒ごとに」の秒も わたす
+// チェストは さわった しゅんかんに 開く・開かないが きまるので、ワールドは 前もって「どの チェストに どの アイテムが いるか」を 知っておく。
+// そのため スタートの前に「チェストに さわったとき」の 中を 1回 なぞる（下見。ブロックは 何も 送らない。「もし〜もっていたら」だけ 書きとめる）
 player.onTellCommand("w26_ping", function () {
+    w26Guards = []
+    for (let i = 0; i < w26TouchIds.length; i++) {
+        if (w26TouchIds[i].indexOf("chest_") != 0) continue
+        w26Probe = w26TouchIds[i]
+        w26Who = W26_ALL
+        w26Delay = 0
+        w26TouchFns[i]()
+    }
+    w26Probe = ""
+    w26Who = W26_ALL
+    w26Delay = 0
+    player.execute("scriptevent w26:guard a;" + w26Guards.join(","))
     player.execute("scriptevent w26:pong a;" + w26Everys.join(","))
 })
 
@@ -235,12 +264,13 @@ namespace W26Event {
         w26On("w26_out", handler)
     }
 
-    //% blockId=w26_on_lock block="$item を もって $lock に さわったとき"
-    //% item.fieldEditor="imagedropdown" item.fieldOptions.columns=4 item.fieldOptions.width=200
-    //% lock.fieldEditor="imagedropdown" lock.fieldOptions.columns=4 lock.fieldOptions.width=200
+    //% blockId=w26_on_touch block="$lock に さわったとき"
+    //% lock.fieldEditor="imagedropdown" lock.fieldOptions.columns=5 lock.fieldOptions.width=250
     //% group="コース" weight=80
-    export function onLock(item: W26Item, lock: W26Lock, handler: () => void): void {
-        w26On("w26_lock_" + W26_LOCK_IDS[lock] + "_" + W26_ITEM_IDS[item], handler)
+    export function onTouch(lock: W26Lock, handler: () => void): void {
+        w26TouchIds.push(W26_LOCK_IDS[lock])
+        w26TouchFns.push(handler)
+        w26On("w26_touch_" + W26_LOCK_IDS[lock], handler)
     }
 
     //% blockId=w26_on_got block="$item を 手に入れたとき"
@@ -345,6 +375,18 @@ namespace W26Trick {
     //% weight=65
     export function floorOn(floor: W26Floor): void {
         w26World("floor_on", W26_COLOR_IDS[floor])
+    }
+
+    //% blockId=w26_key_open block="もし $item を もっていたら ひらく|そうでないなら ひらかない"
+    //% inlineInputMode=external
+    //% item.fieldEditor="imagedropdown" item.fieldOptions.columns=4 item.fieldOptions.width=200
+    //% weight=62
+    export function keyOpen(item: W26Item): void {
+        // さわった とびら・チェストを、その人が item を もっていれば ひらく。もっていなければ ひらかない（チェストは その人だけ・はなれるまで）
+        // もっているかは ワールドが さわった しゅんかんに 見る（どれを さわったかも ワールドが おぼえている）
+        // チェストは 下見で 書きとめた ものを ワールドが つかう（さわった しゅんかんに きめる）。ここで 送るのは とびらの ため
+        if (w26Probe) { w26Guards.push(w26Probe + "=" + W26_ITEM_IDS[item]); return }
+        w26World("key_open", W26_ITEM_IDS[item])
     }
 
     //% blockId=w26_door_open block="$door の とびらを ひらく"

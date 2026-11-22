@@ -389,7 +389,7 @@ namespace W26Trick {
 
     //% blockId=w26_monster block="$robo の マーカーで $kind を だす"
     //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=7 robo.fieldOptions.width=350
-    //% kind.fieldEditor="imagedropdown" kind.fieldOptions.columns=6 kind.fieldOptions.width=624 kind.fieldOptions.tooltips=true
+    //% kind.fieldEditor="imagedropdown" kind.fieldOptions.columns=6 kind.fieldOptions.width=480 kind.fieldOptions.tooltips=true
     //% weight=85
     export function spawn(robo: W26Robo, kind: W26Monster): void {
         w26World("monster", W26_COLOR_IDS[robo] + "|" + W26_MONSTER_IDS[kind])

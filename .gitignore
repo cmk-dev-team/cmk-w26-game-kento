@@ -6,3 +6,5 @@ icons_preview.png
 demo/
 index.html
 mee_tex/
+monsters.py
+monster_faces.py

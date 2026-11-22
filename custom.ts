@@ -103,12 +103,60 @@ enum W26Lock {
     Oxidized = 9
 }
 enum W26Monster {
-    //% block="ゾンビ" jres=W26Icon.m_zombie
+    //% block="ゾンビ 2" jres=W26Icon.m_zombie
     Zombie = 0,
-    //% block="クモ" jres=W26Icon.m_spider
+    //% block="クモ 2" jres=W26Icon.m_spider
     Spider = 1,
-    //% block="スライム" jres=W26Icon.m_slime
-    Slime = 2
+    //% block="スライム 2" jres=W26Icon.m_slime
+    Slime = 2,
+    //% block="ハスク 2" jres=W26Icon.m_husk
+    Husk = 3,
+    //% block="スケルトン 2" jres=W26Icon.m_skeleton
+    Skeleton = 4,
+    //% block="ストレイ 2" jres=W26Icon.m_stray
+    Stray = 5,
+    //% block="どうくつグモ 2" jres=W26Icon.m_cave_spider
+    CaveSpider = 6,
+    //% block="シルバーフィッシュ 2" jres=W26Icon.m_silverfish
+    Silverfish = 7,
+    //% block="ドラウンド 2" jres=W26Icon.m_drowned
+    Drowned = 8,
+    //% block="むらびとゾンビ 2" jres=W26Icon.m_zombie_villager
+    ZombieVillager = 9,
+    //% block="ファントム 2" jres=W26Icon.m_phantom
+    Phantom = 10,
+    //% block="マグマキューブ 2" jres=W26Icon.m_magma_cube
+    MagmaCube = 11,
+    //% block="クリーパー 5" jres=W26Icon.m_creeper
+    Creeper = 12,
+    //% block="ウィッチ 5" jres=W26Icon.m_witch
+    Witch = 13,
+    //% block="ブレイズ 5" jres=W26Icon.m_blaze
+    Blaze = 14,
+    //% block="エンダーマン 5" jres=W26Icon.m_enderman
+    Enderman = 15,
+    //% block="ピリジャー 5" jres=W26Icon.m_pillager
+    Pillager = 16,
+    //% block="ヴィンディケーター 10" jres=W26Icon.m_vindicator
+    Vindicator = 17,
+    //% block="エヴォーカー 10" jres=W26Icon.m_evoker
+    Evoker = 18,
+    //% block="ラヴェジャー 10" jres=W26Icon.m_ravager
+    Ravager = 19,
+    //% block="ウォーデン 30" jres=W26Icon.m_warden
+    Warden = 20,
+    //% block="ウィザー 30" jres=W26Icon.m_wither
+    Wither = 21,
+    //% block="ブタ 1" jres=W26Icon.m_pig
+    Pig = 22,
+    //% block="ニワトリ 1" jres=W26Icon.m_chicken
+    Chicken = 23,
+    //% block="ヒツジ 1" jres=W26Icon.m_sheep
+    Sheep = 24,
+    //% block="ウシ 1" jres=W26Icon.m_cow
+    Cow = 25,
+    //% block="ウサギ 1" jres=W26Icon.m_rabbit
+    Rabbit = 26
 }
 enum W26Fx {
     //% block="かみなり" jres=W26Icon.fx_thunder
@@ -139,7 +187,7 @@ enum W26Change {
 
 const W26_COLOR_IDS = ["red", "blue", "yellow", "green", "orange", "purple", "aqua", "pink", "black", "white", "brown", "lime", "random"]
 const W26_LOCK_IDS = ["door_red", "door_blue", "door_yellow", "door_green", "chest_normal", "chest_trapped", "chest_copper", "chest_exposed", "chest_weathered", "chest_oxidized"]
-const W26_MONSTER_IDS = ["zombie", "spider", "slime"]
+const W26_MONSTER_IDS = ["zombie", "spider", "slime", "husk", "skeleton", "stray", "cave_spider", "silverfish", "drowned", "zombie_villager", "phantom", "magma_cube", "creeper", "witch", "blaze", "enderman", "pillager", "vindicator", "evoker", "ravager", "warden", "wither", "pig", "chicken", "sheep", "cow", "rabbit"]
 const W26_FX_IDS = ["thunder", "firework", "boom"]
 const W26_EFFECT_IDS = ["jump", "speed", "slow", "float", "slowfall"]
 let w26Watch: string[] = []  // 「〔アイテム〕を 手に入れたとき・つかったとき」で 見る アイテム（番号:名前）。スタート前に ワールドに わたす
@@ -341,7 +389,7 @@ namespace W26Trick {
 
     //% blockId=w26_monster block="$robo の マーカーで $kind を だす"
     //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=7 robo.fieldOptions.width=350
-    //% kind.fieldEditor="imagedropdown" kind.fieldOptions.columns=3 kind.fieldOptions.width=150
+    //% kind.fieldEditor="imagedropdown" kind.fieldOptions.columns=6 kind.fieldOptions.width=624 kind.fieldOptions.tooltips=true
     //% weight=85
     export function spawn(robo: W26Robo, kind: W26Monster): void {
         w26World("monster", W26_COLOR_IDS[robo] + "|" + W26_MONSTER_IDS[kind])

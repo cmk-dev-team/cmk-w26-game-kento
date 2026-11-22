@@ -5,7 +5,7 @@ W26Event.onStart(function () {
     W26Player.give(STONE_SWORD)
     W26Player.say("スタート！")
 })
-W26Event.onSwitch(W26Switch.Red, function () {
+W26Event.onPlate(W26Plate.Stone, function () {
     W26Trick.markerSet(W26Robo.Red, PLANKS_OAK)
     W26Game.repeat(3, function () {
         W26Trick.markerSet(W26Robo.Lime, REDSTONE_BLOCK)
@@ -14,7 +14,7 @@ W26Event.onSwitch(W26Switch.Red, function () {
         W26Game.wait(1)
     })
 })
-W26Event.onSwitch(W26Switch.Blue, function () {
+W26Event.onButton(W26Button.Crimson, function () {
     W26Player.effect(W26Effect.Jump, 5, 3)
     W26Player.warp(W26Robo.Random)
 })

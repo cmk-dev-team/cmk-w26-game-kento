@@ -102,6 +102,66 @@ enum W26Lock {
     //% block="さんかした どうの チェスト" jres=W26Icon.ch_oxidized
     Oxidized = 9
 }
+enum W26Plate {
+    //% block="いし" jres=W26Icon.pl_stone
+    Stone = 0,
+    //% block="オーク" jres=W26Icon.pl_oak
+    Oak = 1,
+    //% block="トウヒ" jres=W26Icon.pl_spruce
+    Spruce = 2,
+    //% block="シラカバ" jres=W26Icon.pl_birch
+    Birch = 3,
+    //% block="ジャングル" jres=W26Icon.pl_jungle
+    Jungle = 4,
+    //% block="アカシア" jres=W26Icon.pl_acacia
+    Acacia = 5,
+    //% block="ダークオーク" jres=W26Icon.pl_dark_oak
+    DarkOak = 6,
+    //% block="マングローブ" jres=W26Icon.pl_mangrove
+    Mangrove = 7,
+    //% block="サクラ" jres=W26Icon.pl_cherry
+    Cherry = 8,
+    //% block="タケ" jres=W26Icon.pl_bamboo
+    Bamboo = 9,
+    //% block="ペールオーク" jres=W26Icon.pl_pale_oak
+    PaleOak = 10,
+    //% block="しんく" jres=W26Icon.pl_crimson
+    Crimson = 11,
+    //% block="ゆがんだ" jres=W26Icon.pl_warped
+    Warped = 12,
+    //% block="きん（かるい）" jres=W26Icon.pl_gold
+    Gold = 13,
+    //% block="てつ（おもい）" jres=W26Icon.pl_iron
+    Iron = 14
+}
+enum W26Button {
+    //% block="いし" jres=W26Icon.bt_stone
+    Stone = 0,
+    //% block="オーク" jres=W26Icon.bt_oak
+    Oak = 1,
+    //% block="トウヒ" jres=W26Icon.bt_spruce
+    Spruce = 2,
+    //% block="シラカバ" jres=W26Icon.bt_birch
+    Birch = 3,
+    //% block="ジャングル" jres=W26Icon.bt_jungle
+    Jungle = 4,
+    //% block="アカシア" jres=W26Icon.bt_acacia
+    Acacia = 5,
+    //% block="ダークオーク" jres=W26Icon.bt_dark_oak
+    DarkOak = 6,
+    //% block="マングローブ" jres=W26Icon.bt_mangrove
+    Mangrove = 7,
+    //% block="サクラ" jres=W26Icon.bt_cherry
+    Cherry = 8,
+    //% block="タケ" jres=W26Icon.bt_bamboo
+    Bamboo = 9,
+    //% block="ペールオーク" jres=W26Icon.bt_pale_oak
+    PaleOak = 10,
+    //% block="しんく" jres=W26Icon.bt_crimson
+    Crimson = 11,
+    //% block="ゆがんだ" jres=W26Icon.bt_warped
+    Warped = 12
+}
 enum W26Monster {
     //% block="ゾンビ 2" jres=W26Icon.m_zombie
     Zombie = 0,
@@ -187,6 +247,8 @@ enum W26Change {
 
 const W26_COLOR_IDS = ["red", "blue", "yellow", "green", "orange", "purple", "aqua", "pink", "black", "white", "brown", "lime", "random"]
 const W26_LOCK_IDS = ["door_red", "door_blue", "door_yellow", "door_green", "chest_normal", "chest_trapped", "chest_copper", "chest_exposed", "chest_weathered", "chest_oxidized"]
+const W26_PLATE_IDS = ["stone", "oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo", "pale_oak", "crimson", "warped", "gold", "iron"]
+const W26_BUTTON_IDS = ["stone", "oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo", "pale_oak", "crimson", "warped"]
 const W26_MONSTER_IDS = ["zombie", "spider", "slime", "husk", "skeleton", "stray", "cave_spider", "silverfish", "drowned", "zombie_villager", "phantom", "magma_cube", "creeper", "witch", "blaze", "enderman", "pillager", "vindicator", "evoker", "ravager", "warden", "wither", "pig", "chicken", "sheep", "cow", "rabbit"]
 const W26_FX_IDS = ["thunder", "firework", "boom"]
 const W26_EFFECT_IDS = ["jump", "speed", "slow", "float", "slowfall"]
@@ -289,11 +351,19 @@ namespace W26Event {
         w26On("w26_goal", handler)
     }
 
-    //% blockId=w26_on_switch block="$sw の スイッチを ふんだとき"
-    //% sw.fieldEditor="imagedropdown" sw.fieldOptions.columns=4 sw.fieldOptions.width=200
+    //% blockId=w26_on_plate block="$plate が ふまれた とき"
+    //% plate.fieldEditor="imagedropdown" plate.fieldOptions.columns=6 plate.fieldOptions.width=480 plate.fieldOptions.tooltips=true
     //% group="コース" weight=90
-    export function onSwitch(sw: W26Switch, handler: () => void): void {
-        w26On("w26_sw_" + W26_COLOR_IDS[sw], handler)
+    export function onPlate(plate: W26Plate, handler: () => void): void {
+        // マイクラの 感圧板（しゅるいで えらぶ）。その子が 置いた 物だけ（となりの コースと まざらない・Miya 11/23）
+        w26On("w26_plate_" + W26_PLATE_IDS[plate], handler)
+    }
+
+    //% blockId=w26_on_button block="$button が おされた とき"
+    //% button.fieldEditor="imagedropdown" button.fieldOptions.columns=6 button.fieldOptions.width=480 button.fieldOptions.tooltips=true
+    //% group="コース" weight=89
+    export function onButton(button: W26Button, handler: () => void): void {
+        w26On("w26_button_" + W26_BUTTON_IDS[button], handler)
     }
 
     //% blockId=w26_on_out block="アウトゆかに のったとき"

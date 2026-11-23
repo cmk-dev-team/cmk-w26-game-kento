@@ -218,6 +218,64 @@ enum W26Monster {
     //% block="ウサギ 1" jres=W26Icon.m_rabbit
     Rabbit = 26
 }
+enum W26MonsterDown {
+    //% block="すべて" jres=W26Icon.md_all
+    All = -1,
+    //% block="ゾンビ" jres=W26Icon.md_zombie
+    Zombie = 0,
+    //% block="クモ" jres=W26Icon.md_spider
+    Spider = 1,
+    //% block="スライム" jres=W26Icon.md_slime
+    Slime = 2,
+    //% block="ハスク" jres=W26Icon.md_husk
+    Husk = 3,
+    //% block="スケルトン" jres=W26Icon.md_skeleton
+    Skeleton = 4,
+    //% block="ストレイ" jres=W26Icon.md_stray
+    Stray = 5,
+    //% block="どうくつグモ" jres=W26Icon.md_cave_spider
+    CaveSpider = 6,
+    //% block="シルバーフィッシュ" jres=W26Icon.md_silverfish
+    Silverfish = 7,
+    //% block="ドラウンド" jres=W26Icon.md_drowned
+    Drowned = 8,
+    //% block="むらびとゾンビ" jres=W26Icon.md_zombie_villager
+    ZombieVillager = 9,
+    //% block="ファントム" jres=W26Icon.md_phantom
+    Phantom = 10,
+    //% block="マグマキューブ" jres=W26Icon.md_magma_cube
+    MagmaCube = 11,
+    //% block="クリーパー" jres=W26Icon.md_creeper
+    Creeper = 12,
+    //% block="ウィッチ" jres=W26Icon.md_witch
+    Witch = 13,
+    //% block="ブレイズ" jres=W26Icon.md_blaze
+    Blaze = 14,
+    //% block="エンダーマン" jres=W26Icon.md_enderman
+    Enderman = 15,
+    //% block="ピリジャー" jres=W26Icon.md_pillager
+    Pillager = 16,
+    //% block="ヴィンディケーター" jres=W26Icon.md_vindicator
+    Vindicator = 17,
+    //% block="エヴォーカー" jres=W26Icon.md_evoker
+    Evoker = 18,
+    //% block="ラヴェジャー" jres=W26Icon.md_ravager
+    Ravager = 19,
+    //% block="ウォーデン" jres=W26Icon.md_warden
+    Warden = 20,
+    //% block="ウィザー" jres=W26Icon.md_wither
+    Wither = 21,
+    //% block="ブタ" jres=W26Icon.md_pig
+    Pig = 22,
+    //% block="ニワトリ" jres=W26Icon.md_chicken
+    Chicken = 23,
+    //% block="ヒツジ" jres=W26Icon.md_sheep
+    Sheep = 24,
+    //% block="ウシ" jres=W26Icon.md_cow
+    Cow = 25,
+    //% block="ウサギ" jres=W26Icon.md_rabbit
+    Rabbit = 26
+}
 enum W26Fx {
     //% block="かみなり" jres=W26Icon.fx_thunder
     Thunder = 0,
@@ -351,7 +409,7 @@ namespace W26Event {
         w26On("w26_goal", handler)
     }
 
-    //% blockId=w26_on_plate block="$plate が ふまれた とき"
+    //% blockId=w26_on_plate block="$plate の 感圧板が ふまれた とき"
     //% plate.fieldEditor="imagedropdown" plate.fieldOptions.columns=6 plate.fieldOptions.width=480 plate.fieldOptions.tooltips=true
     //% group="コース" weight=90
     export function onPlate(plate: W26Plate, handler: () => void): void {
@@ -359,7 +417,7 @@ namespace W26Event {
         w26On("w26_plate_" + W26_PLATE_IDS[plate], handler)
     }
 
-    //% blockId=w26_on_button block="$button が おされた とき"
+    //% blockId=w26_on_button block="$button の ボタンが おされた とき"
     //% button.fieldEditor="imagedropdown" button.fieldOptions.columns=6 button.fieldOptions.width=480 button.fieldOptions.tooltips=true
     //% group="コース" weight=89
     export function onButton(button: W26Button, handler: () => void): void {
@@ -381,7 +439,7 @@ namespace W26Event {
         w26On("w26_touch_" + W26_LOCK_IDS[lock], handler)
     }
 
-    //% blockId=w26_on_got block="$item を 手に入れたとき"
+    //% blockId=w26_on_got block="$item を ゲットしたとき"
     //% item.shadow=minecraftItem
     //% group="アイテム" weight=75
     export function onGot(item: number, handler: () => void): void {
@@ -397,10 +455,12 @@ namespace W26Event {
         w26On("w26_use_" + item, handler)
     }
 
-    //% blockId=w26_on_monster_down block="モンスターを たおしたとき"
+    //% blockId=w26_on_monster_down block="$kind を たおしたとき"
+    //% kind.fieldEditor="imagedropdown" kind.fieldOptions.columns=6 kind.fieldOptions.width=480 kind.fieldOptions.tooltips=true
     //% group="モンスター" weight=65
-    export function onDown(handler: () => void): void {
-        w26On("w26_monster_down", handler)
+    export function onDown(kind: W26MonsterDown, handler: () => void): void {
+        // v0.4.7（Miya 11/23）：しゅるいを えらぶ。「すべて」は どれを たおしても
+        w26On(kind == W26MonsterDown.All ? "w26_monster_down" : "w26_mdown_" + W26_MONSTER_IDS[kind], handler)
     }
 
     //% blockId=w26_on_hit block="モンスターに こうげきされたとき"
@@ -509,11 +569,21 @@ namespace W26Trick {
 
 //% color="#2E7D32" weight=80 block="あそぶ人" icon=""
 namespace W26Player {
-    //% blockId=w26_give block="$item を あげる"
+    //% blockId=w26_give block="$item を $n こ あげる"
     //% item.shadow=minecraftItem
+    //% n.defl=1 n.min=1 n.max=64
     //% weight=100
-    export function give(item: number): void {
-        w26Person("give", w26ItemName(item))
+    export function give(item: number, n: number): void {
+        w26Person("give", w26ItemName(item) + "|" + Math.max(1, Math.round(n)))
+    }
+
+    //% blockId=w26_take block="$item を $n こ けす"
+    //% item.shadow=minecraftItem
+    //% n.defl=1 n.min=1 n.max=64
+    //% weight=95
+    export function take(item: number, n: number): void {
+        // もちものから けす（Miya 11/23「けすも ほしい 個数つきで」）。もっている より 多ければ ある だけ
+        w26Person("take", w26ItemName(item) + "|" + Math.max(1, Math.round(n)))
     }
 
     //% blockId=w26_effect block="$effect を $seconds 秒 つける　つよさ $level"
@@ -526,7 +596,7 @@ namespace W26Player {
         w26Person("effect", W26_EFFECT_IDS[effect] + "|" + seconds + "|" + level)
     }
 
-    //% blockId=w26_warp block="$robo の マーカーへ ワープさせる"
+    //% blockId=w26_warp block="$robo の マーカーへ テレポートさせる"
     //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=7 robo.fieldOptions.width=350
     //% weight=80
     export function warp(robo: W26Robo): void {
@@ -578,6 +648,14 @@ namespace W26Game {
         w26Delay = d
     }
 
+    //% blockId=w26_wait_tick block="$ticks tick まつ"
+    //% ticks.defl=1 ticks.min=1 ticks.max=20
+    //% weight=79
+    export function waitTick(ticks: number): void {
+        // 1 tick ＝ 1/20 秒（Miya 11/23「1tick まつも つくれたりしないかな」）。ワールドが 数える
+        wait(Math.max(1, Math.round(ticks)) / 20)
+    }
+
     //% blockId=w26_repeat block="$times 回 くりかえす"
     //% times.defl=4 times.min=1 times.max=100
     //% handlerStatement=1
@@ -596,11 +674,5 @@ namespace W26Game {
     //% weight=50
     export function gameOver(): void {
         w26Person("gameover", "")
-    }
-
-    //% blockId=w26_kit block="ぶひんを もらう"
-    //% weight=10
-    export function kit(): void {
-        player.execute("scriptevent w26:kit a;")
     }
 }

@@ -385,15 +385,16 @@ function w26Person(id: string, message: string): void {
 }
 // イベントを、みんな（_a）と 番号ごと（_0〜_7）で うける
 // あとから 入った 人の MakeCode には ささやき（onTellCommand）が とどかない（11/24 ぷぷさんで 確かめた：歩いた・チャットは とどく）
-// → ワールドは 知らせを「ポスト」（見えない エンティティ cmk:w26_mail）に して、MakeCode が querytarget で とりに いく（v0.4.10）
-//   ポストの 場所が 何の 知らせかを あらわす：x・z ＝ 下の w26Msgs の 番号、y ＝ 来た じゅん。ワールドは w26:subs で 番号を 知る
-const W26_MAIL_X = 2000
-const W26_MAIL_Y = 100
-const W26_MAIL_Z = 2000
-const W26_MAIL_W = 128
+// → ワールドは 知らせを その子の スコア w26ev に 書き、MakeCode が testfor（はい/いいえの 返事）で 読みに いく（v0.4.11）
+//   スコア ＝ 知らせの 番号×2＋かわりばんこ（0/1）＋1。0 は「なし」。読んだら w26:ack で ワールドが 次を 出す
+//   番号は 下の w26Msgs の ならび順。ワールドは w26:subs で 知る
+//   （v0.4.10 の querytarget は MakeCode の 中で 結果の x・y が 読めず 止まった：「tmp.y is not a function」11/24）
+//   読みに いく きっかけ：1びょうおき（MakeCode を とじていると タイマーは 1びょうに なる）＋ 歩いた・とんだ など うごいた とき
 let w26Msgs: string[] = []           // 聞いている 知らせの 名前（番号＝ならび順）
 let w26LMsg: number[] = []           // うけ手ごとの 知らせ番号
 let w26LFn: (() => void)[] = []
+let w26Busy = false
+let w26Last = 0
 function w26Listen(msg: string, fn: () => void): void {
     let i = w26Msgs.indexOf(msg)
     if (i < 0) {
@@ -410,11 +411,6 @@ function w26Fire(i: number): void {
         loops.runInBackground(function () { f() })
     }
 }
-function w26Hash(s: string): number {
-    let h = 7
-    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 1000003
-    return h
-}
 function w26SendSubs(): void {
     let parts: string[] = []
     let cur = ""
@@ -428,41 +424,32 @@ function w26SendSubs(): void {
     parts.push(cur)
     for (let k = 0; k < parts.length; k++) player.execute("scriptevent w26:subs " + k + "/" + parts.length + "¦" + parts[k])
 }
-function w26Poll(): void {
-    const sel = mobs.target(TargetSelectorKind.AllEntities)
-    sel.addRule("type", "cmk:w26_mail")
-    sel.addRule("tag", "w26m" + w26Hash(player.name()))
-    let seen: string[] = []
-    while (true) {
-        const rs = mobs.queryTarget(sel)
-        if (rs.length > 0) {
-            // 来た じゅん（y）に ならべる。y は 0〜49 を まわるので、まわった 所を つなぐ
-            let ys: number[] = []
-            let lo = 99
-            let hi = -1
-            for (let k = 0; k < rs.length; k++) {
-                const y = Math.round(rs[k].y - W26_MAIL_Y)
-                ys.push(y)
-                if (y < lo) lo = y
-                if (y > hi) hi = y
-            }
-            if (hi - lo > 25) for (let k = 0; k < ys.length; k++) if (ys[k] < 25) ys[k] += 50
-            let done: boolean[] = []
-            for (let k = 0; k < rs.length; k++) done.push(false)
-            for (let n = 0; n < rs.length; n++) {
-                let b = -1
-                for (let k = 0; k < rs.length; k++) if (!done[k] && (b < 0 || ys[k] < ys[b])) b = k
-                done[b] = true
-                const r = rs[b]
-                if (seen.indexOf(r.uniqueId) >= 0) continue
-                seen.push(r.uniqueId)
-                if (seen.length > 100) seen.shift()
-                w26Fire(Math.round(r.x - 0.5 - W26_MAIL_X) + W26_MAIL_W * Math.round(r.z - 0.5 - W26_MAIL_Z))
-            }
-        }
-        loops.pause(50)
-    }
+function w26Has(lo: number, hi: number): boolean {
+    return player.execute("testfor @s[scores={w26ev=" + lo + ".." + hi + "}]")
 }
+function w26Check(): void {
+    if (w26Busy || w26Msgs.length == 0) return
+    w26Busy = true
+    for (let n = 0; n < 20; n++) {
+        if (!w26Has(1, 99999)) break
+        let lo = 1
+        let hi = 2 * w26Msgs.length + 2
+        while (lo < hi) {
+            const mid = Math.floor((lo + hi) / 2)
+            if (w26Has(lo, mid)) hi = mid
+            else lo = mid + 1
+        }
+        if (lo == w26Last) break     // さっき 読んだ 物（ack が まだ とどいていない）
+        w26Last = lo
+        player.execute("scriptevent w26:ack " + lo)
+        w26Fire(Math.floor((lo - 1) / 2))
+    }
+    w26Busy = false
+}
+player.onTravelled(TravelMethod.Walk, function () { w26Check() })
+player.onTravelled(TravelMethod.Sprint, function () { w26Check() })
+player.onTravelled(TravelMethod.Fly, function () { w26Check() })
+player.onTravelled(TravelMethod.Fall, function () { w26Check() })
 
 function w26On(name: string, handler: () => void): void {
     w26Listen(name + "_a", function () {
@@ -523,10 +510,15 @@ function w26Dump(): void {
 // うごきだして すぐは とどかない ことが ある（ジュニア冬 11/24 MEE）→ 1.5びょう まって 送る
 loops.runInBackground(function () {
     loops.pause(1500)
-    player.execute("scriptevent w26:alive 0.4.10")
+    player.execute("scriptevent w26:alive 0.4.11")
     w26SendSubs()
+    // はい/いいえの 返事が 読めるかを 1回 見る（ありえない スコアで「はい」なら 読めていない）
+    player.execute("scriptevent w26:boolcheck " + (w26Has(-2000000, -1999999) ? "ng" : "ok"))
     w26Dump()
-    w26Poll()
+    while (true) {
+        w26Check()
+        loops.pause(100)
+    }
 })
 // チャットで「p」（play の p）→ いま いる 製作区画を テストステージへ 出す（v0.4.9・Miya 11/24「いちいち 押しに 行かないと いけないの？」）
 // ワールドの ruin/areas.js の w26:test が 立っている 区画を 見つける。テストステージの 中で 打っても 出しなおす

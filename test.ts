@@ -2,6 +2,7 @@
 W26Event.onStart(function () {
     W26Game.setLimit(60)
     W26Trick.spawn(W26Robo.Green, W26Monster.Zombie)
+    W26Trick.spawnAnimal(W26Robo.Green, W26Animal.Pig)
     W26Player.give(STONE_SWORD, 1)
     W26Player.take(STONE_SWORD, 1)
     W26Game.waitTick(1)
@@ -26,7 +27,7 @@ W26Event.every(3, function () {
     W26Trick.floorOn(W26Floor.Yellow)
     W26Trick.fx(W26Robo.Pink, W26Fx.Thunder)
 })
-W26Event.onOut(function () { W26Player.back() })
+W26Event.onOut(function () { W26Player.back(); W26Player.particle(W26Particle.Heart); W26Trick.particle(W26Robo.Red, W26Particle.Sparkle) })
 W26Event.onGot(DIAMOND, function () { W26Game.point(1, W26Change.Add) })
 W26Event.onTouch(W26Lock.DoorRed, function () { W26Trick.keyOpen(TRIPWIRE_HOOK) })
 W26Event.onTouch(W26Lock.Copper, function () { W26Trick.keyOpen(TRIPWIRE_HOOK) })

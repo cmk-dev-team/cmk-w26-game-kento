@@ -206,7 +206,9 @@ enum W26Monster {
     //% block="ウォーデン 30" jres=W26Icon.m_warden
     Warden = 20,
     //% block="ウィザー 30" jres=W26Icon.m_wither
-    Wither = 21,
+    Wither = 21
+}
+enum W26Animal {
     //% block="ブタ 1" jres=W26Icon.m_pig
     Pig = 22,
     //% block="ニワトリ 1" jres=W26Icon.m_chicken
@@ -281,8 +283,41 @@ enum W26Fx {
     Thunder = 0,
     //% block="はなび" jres=W26Icon.fx_firework
     Firework = 1,
-    //% block="ばくはつ" jres=W26Icon.fx_boom
-    Boom = 2
+    //% block="火のついた TNT" jres=W26Icon.fx_boom
+    Boom = 2,
+    //% block="トロッコ" jres=W26Icon.fx_minecart
+    Minecart = 3,
+    //% block="チェストつき トロッコ" jres=W26Icon.fx_chest_minecart
+    ChestMinecart = 4,
+    //% block="ホッパーつき トロッコ" jres=W26Icon.fx_hopper_minecart
+    HopperMinecart = 5,
+    //% block="TNTつき トロッコ" jres=W26Icon.fx_tnt_minecart
+    TntMinecart = 6,
+    //% block="ボート" jres=W26Icon.fx_boat
+    Boat = 7,
+    //% block="チェストつき ボート" jres=W26Icon.fx_chest_boat
+    ChestBoat = 8
+}
+// パーティクル（v0.4.8・Miya 11/24「パーティクルセットも ほしい」）。ジュニア冬と 同じ 9つ（course_dev/minecraft/particles.md から。キラキラは crop_growth_emitter）
+enum W26Particle {
+    //% block="ハート" jres=W26Icon.p_heart
+    Heart = 0,
+    //% block="キラキラ" jres=W26Icon.p_sparkle
+    Sparkle = 1,
+    //% block="トーテム" jres=W26Icon.p_totem
+    Totem = 2,
+    //% block="さくら" jres=W26Icon.p_cherry
+    Cherry = 3,
+    //% block="おんぷ" jres=W26Icon.p_note
+    Note = 4,
+    //% block="ほのお" jres=W26Icon.p_flame
+    Flame = 5,
+    //% block="けむり" jres=W26Icon.p_smoke
+    Smoke = 6,
+    //% block="ばくはつ" jres=W26Icon.p_boom
+    Boom = 7,
+    //% block="かぜ" jres=W26Icon.p_wind
+    Wind = 8
 }
 enum W26Effect {
     //% block="ジャンプ力" jres=W26Icon.e_jump
@@ -308,8 +343,9 @@ const W26_LOCK_IDS = ["door_red", "door_blue", "door_yellow", "door_green", "che
 const W26_PLATE_IDS = ["stone", "oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo", "pale_oak", "crimson", "warped", "gold", "iron"]
 const W26_BUTTON_IDS = ["stone", "oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo", "pale_oak", "crimson", "warped"]
 const W26_MONSTER_IDS = ["zombie", "spider", "slime", "husk", "skeleton", "stray", "cave_spider", "silverfish", "drowned", "zombie_villager", "phantom", "magma_cube", "creeper", "witch", "blaze", "enderman", "pillager", "vindicator", "evoker", "ravager", "warden", "wither", "pig", "chicken", "sheep", "cow", "rabbit"]
-const W26_FX_IDS = ["thunder", "firework", "boom"]
-const W26_EFFECT_IDS = ["jump", "speed", "slow", "float", "slowfall"]
+const W26_FX_IDS = ["thunder", "firework", "boom", "minecart", "chest_minecart", "hopper_minecart", "tnt_minecart", "boat", "chest_boat"]   // のりもの（v0.4.8・Miya 11/23「トロッコ・ボートも。トロッコは 各種」）
+const W26_PARTICLE_IDS = ["heart", "sparkle", "totem", "cherry", "note", "flame", "smoke", "boom", "wind"]
+const W26_EFFECT_IDS =["jump", "speed", "slow", "float", "slowfall"]
 let w26Watch: string[] = []  // 「〔アイテム〕を 手に入れたとき・つかったとき」で 見る アイテム（番号:名前）。スタート前に ワールドに わたす
 // アイテムは ゲームの 名前で ワールドに わたす（blocks.nameOfBlock。MEE で「Wheat Seeds」「Chainmail Helmet」と 返るのを 見た・Miya 11/23）
 function w26ItemName(item: number): string { return blocks.nameOfBlock(item) }
@@ -373,6 +409,44 @@ function w26OnAll(name: string, handler: () => void): void {
     })
 }
 
+// ---- go が とどかない 対策（11/24 Miya 決定。course_dev/minecraft/makecode-go-connection.md）
+// (1) プログラムが うごきだしたら ワールドへ「つながったよ」（w26:alive）。とどかない子は MakeCode が マイクラと つながっていない
+// (2) そのとき プログラムを まるごと ワールドへ 送る（w26:prog）。入りなおしたら ワールドが 組みなおして 開く
+//     ジュニア冬は「うごいた ブロック」だけ 記録したが、ここは 下見（チェストと 同じ）で ぜんぶの イベントの 中を 1回 なぞる
+//     → まだ ふまれていない 感圧板の 中も のこる。なぞる あいだは ブロックは 何も しない（しるしを 書くだけ）
+let w26Dumping = false
+let w26Toks: string[] = []
+let w26EvToks: string[] = []
+let w26EvFns: (() => void)[] = []
+function w26Reg(tok: string, handler: () => void): void {
+    w26EvToks.push(tok)
+    w26EvFns.push(handler)
+}
+function w26Tok(tok: string): boolean {
+    if (!w26Dumping) return false
+    w26Toks.push(tok)
+    return true
+}
+function w26Dump(): void {
+    const n = w26EvToks.length
+    if (n == 0) player.execute("scriptevent w26:prog 0/0")
+    for (let i = 0; i < n; i++) {
+        w26Toks = []
+        w26Dumping = true
+        w26EvFns[i]()
+        w26Dumping = false
+        player.execute("scriptevent w26:prog " + i + "/" + n + "¦" + w26EvToks[i] + (w26Toks.length ? "¦" + w26Toks.join("¦") : ""))
+    }
+    w26Who = W26_ALL
+    w26Delay = 0
+}
+// うごきだして すぐは とどかない ことが ある（ジュニア冬 11/24 MEE）→ 1.5びょう まって 送る
+loops.runInBackground(function () {
+    loops.pause(1500)
+    player.execute("scriptevent w26:alive 0.4.8")
+    w26Dump()
+})
+
 // ワールドからの よびかけに こたえる（プログラムが うごいているかを ワールドが たしかめる）。「〇秒ごとに」の秒も わたす
 // チェストは さわった しゅんかんに 開く・開かないが きまるので、ワールドは 前もって「どの チェストに どの アイテムが いるか」を 知っておく。
 // そのため スタートの前に「チェストに さわったとき」の 中を 1回 なぞる（下見。ブロックは 何も 送らない。「もし〜もっていたら」だけ 書きとめる）
@@ -398,6 +472,7 @@ namespace W26Event {
     //% blockId=w26_on_start block="スタートしたとき"
     //% group="ゲーム" weight=100
     export function onStart(handler: () => void): void {
+        w26Reg("start", handler)
         w26OnAll("w26_start", handler)
         // ゲームのとちゅうで加わった人：人に効くブロックだけ、その人に もう一度
         for (let i = 0; i < W26_SLOTS; i++) w26OnSlot("w26_join", i, W26_REPLAY + i, handler)
@@ -406,6 +481,7 @@ namespace W26Event {
     //% blockId=w26_on_goal block="ゴールしたとき"
     //% group="ゲーム" weight=95
     export function onGoal(handler: () => void): void {
+        w26Reg("goal", handler)
         w26On("w26_goal", handler)
     }
 
@@ -413,6 +489,7 @@ namespace W26Event {
     //% plate.fieldEditor="imagedropdown" plate.fieldOptions.columns=6 plate.fieldOptions.width=480 plate.fieldOptions.tooltips=true
     //% group="コース" weight=90
     export function onPlate(plate: W26Plate, handler: () => void): void {
+        w26Reg("plate:" + plate, handler)
         // マイクラの 感圧板（しゅるいで えらぶ）。その子が 置いた 物だけ（となりの コースと まざらない・Miya 11/23）
         w26On("w26_plate_" + W26_PLATE_IDS[plate], handler)
     }
@@ -421,12 +498,14 @@ namespace W26Event {
     //% button.fieldEditor="imagedropdown" button.fieldOptions.columns=6 button.fieldOptions.width=480 button.fieldOptions.tooltips=true
     //% group="コース" weight=89
     export function onButton(button: W26Button, handler: () => void): void {
+        w26Reg("button:" + button, handler)
         w26On("w26_button_" + W26_BUTTON_IDS[button], handler)
     }
 
     //% blockId=w26_on_out block="アウトゆかに のったとき"
     //% group="コース" weight=85
     export function onOut(handler: () => void): void {
+        w26Reg("out", handler)
         w26On("w26_out", handler)
     }
 
@@ -434,6 +513,7 @@ namespace W26Event {
     //% lock.fieldEditor="imagedropdown" lock.fieldOptions.columns=5 lock.fieldOptions.width=250
     //% group="コース" weight=80
     export function onTouch(lock: W26Lock, handler: () => void): void {
+        w26Reg("touch:" + lock, handler)
         w26TouchIds.push(W26_LOCK_IDS[lock])
         w26TouchFns.push(handler)
         w26On("w26_touch_" + W26_LOCK_IDS[lock], handler)
@@ -443,6 +523,7 @@ namespace W26Event {
     //% item.shadow=minecraftItem
     //% group="アイテム" weight=75
     export function onGot(item: number, handler: () => void): void {
+        w26Reg("got:" + item, handler)
         w26WatchItem(item)
         w26On("w26_got_" + item, handler)
     }
@@ -451,6 +532,7 @@ namespace W26Event {
     //% item.shadow=minecraftItem
     //% group="アイテム" weight=70
     export function onUse(item: number, handler: () => void): void {
+        w26Reg("use:" + item, handler)
         w26WatchItem(item)
         w26On("w26_use_" + item, handler)
     }
@@ -459,6 +541,7 @@ namespace W26Event {
     //% kind.fieldEditor="imagedropdown" kind.fieldOptions.columns=6 kind.fieldOptions.width=480 kind.fieldOptions.tooltips=true
     //% group="モンスター" weight=65
     export function onDown(kind: W26MonsterDown, handler: () => void): void {
+        w26Reg("down:" + kind, handler)
         // v0.4.7（Miya 11/23）：しゅるいを えらぶ。「すべて」は どれを たおしても
         w26On(kind == W26MonsterDown.All ? "w26_monster_down" : "w26_mdown_" + W26_MONSTER_IDS[kind], handler)
     }
@@ -466,12 +549,14 @@ namespace W26Event {
     //% blockId=w26_on_hit block="モンスターに こうげきされたとき"
     //% group="モンスター" weight=60
     export function onHit(handler: () => void): void {
+        w26Reg("hit", handler)
         w26On("w26_hit", handler)
     }
 
     //% blockId=w26_on_dead block="やられたとき"
     //% group="モンスター" weight=55
     export function onDead(handler: () => void): void {
+        w26Reg("dead", handler)
         w26On("w26_dead", handler)
     }
 
@@ -479,6 +564,7 @@ namespace W26Event {
     //% seconds.defl=3 seconds.min=1 seconds.max=60
     //% group="時間・★" weight=50
     export function every(seconds: number, handler: () => void): void {
+        w26Reg("every:" + seconds, handler)
         // 時間は ワールドが数える。ここは 番号と秒を おぼえて、知らせを待つだけ
         const id = w26Everys.length
         w26Everys.push(Math.max(1, seconds))
@@ -488,6 +574,7 @@ namespace W26Event {
     //% blockId=w26_on_timeup block="時間ぎれに なったとき"
     //% group="時間・★" weight=45
     export function onTimeUp(handler: () => void): void {
+        w26Reg("timeup", handler)
         w26OnAll("w26_timeup", handler)
     }
 
@@ -495,6 +582,7 @@ namespace W26Event {
     //% n.defl=5 n.min=1
     //% group="時間・★" weight=40
     export function onPoint(n: number, handler: () => void): void {
+        w26Reg("point:" + n, handler)
         w26On("w26_point_" + n, handler)
     }
 }
@@ -506,6 +594,7 @@ namespace W26Trick {
     //% block.shadow=minecraftBlock
     //% weight=100
     export function markerSet(robo: W26Robo, block: number): void {
+        if (w26Tok("mset:" + robo + ":" + block)) return
         // その色の マーカーを ぜんぶ、えらんだ ブロックに する（はし・かべ・かいだんは マーカーの ならべ方で きまる。Miya 11/23）
         w26World("marker_set", W26_COLOR_IDS[robo] + "|" + blocks.nameOfBlock(block))
     }
@@ -514,6 +603,7 @@ namespace W26Trick {
     //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=7 robo.fieldOptions.width=350
     //% weight=95
     export function markerBack(robo: W26Robo): void {
+        if (w26Tok("mback:" + robo)) return
         w26World("marker_back", W26_COLOR_IDS[robo])
     }
 
@@ -522,21 +612,43 @@ namespace W26Trick {
     //% kind.fieldEditor="imagedropdown" kind.fieldOptions.columns=6 kind.fieldOptions.width=480 kind.fieldOptions.tooltips=true
     //% weight=85
     export function spawn(robo: W26Robo, kind: W26Monster): void {
+        if (w26Tok("monster:" + robo + ":" + kind)) return
         w26World("monster", W26_COLOR_IDS[robo] + "|" + W26_MONSTER_IDS[kind])
     }
 
-    //% blockId=w26_fx block="$robo の マーカーで $fx を おこす"
+    //% blockId=w26_animal block="$robo の マーカーで $kind を だす"
     //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=7 robo.fieldOptions.width=350
-    //% fx.fieldEditor="imagedropdown" fx.fieldOptions.columns=3 fx.fieldOptions.width=150
+    //% kind.fieldEditor="imagedropdown" kind.fieldOptions.columns=5 kind.fieldOptions.width=400 kind.fieldOptions.tooltips=true
+    //% weight=83
+    export function spawnAnimal(robo: W26Robo, kind: W26Animal): void {
+        if (w26Tok("animal:" + robo + ":" + kind)) return
+        // いきもの（v0.4.8・Miya 11/23「モンスター・いきもの・そのほか で 分けたい」）。ワールドへの 送り方は モンスターと 同じ
+        w26World("monster", W26_COLOR_IDS[robo] + "|" + W26_MONSTER_IDS[kind])
+    }
+
+    //% blockId=w26_fx block="$robo の マーカーで $fx を だす"
+    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=7 robo.fieldOptions.width=350
+    //% fx.fieldEditor="imagedropdown" fx.fieldOptions.columns=3 fx.fieldOptions.width=240 fx.fieldOptions.tooltips=true
     //% weight=80
     export function fx(robo: W26Robo, fx: W26Fx): void {
+        if (w26Tok("fx:" + robo + ":" + fx)) return
         w26World("fx", W26_COLOR_IDS[robo] + "|" + W26_FX_IDS[fx])
+    }
+
+    //% blockId=w26_particle block="$robo の マーカーで $p を だす"
+    //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=7 robo.fieldOptions.width=350
+    //% p.fieldEditor="imagedropdown" p.fieldOptions.columns=3 p.fieldOptions.width=192 p.fieldOptions.tooltips=true
+    //% weight=78
+    export function particle(robo: W26Robo, p: W26Particle): void {
+        if (w26Tok("part:" + robo + ":" + p)) return
+        w26World("particle", W26_COLOR_IDS[robo] + "|" + W26_PARTICLE_IDS[p])
     }
 
     //% blockId=w26_floor_off block="$floor の きえるブロックを けす"
     //% floor.fieldEditor="imagedropdown" floor.fieldOptions.columns=4 floor.fieldOptions.width=200
     //% weight=70
     export function floorOff(floor: W26Floor): void {
+        if (w26Tok("floor_off:" + floor)) return
         w26World("floor_off", W26_COLOR_IDS[floor])
     }
 
@@ -544,6 +656,7 @@ namespace W26Trick {
     //% floor.fieldEditor="imagedropdown" floor.fieldOptions.columns=4 floor.fieldOptions.width=200
     //% weight=65
     export function floorOn(floor: W26Floor): void {
+        if (w26Tok("floor_on:" + floor)) return
         w26World("floor_on", W26_COLOR_IDS[floor])
     }
 
@@ -552,6 +665,7 @@ namespace W26Trick {
     //% item.shadow=minecraftItem
     //% weight=62
     export function keyOpen(item: number): void {
+        if (w26Tok("keyopen:" + item)) return
         // さわった とびら・チェストを、その人が item を もっていれば ひらく。もっていなければ ひらかない（チェストは その人だけ・はなれるまで）
         // もっているかは ワールドが さわった しゅんかんに 見る（どれを さわったかも ワールドが おぼえている）
         // チェストは 下見で 書きとめた ものを ワールドが つかう（さわった しゅんかんに きめる）。ここで 送るのは とびらの ため
@@ -563,6 +677,7 @@ namespace W26Trick {
     //% door.fieldEditor="imagedropdown" door.fieldOptions.columns=4 door.fieldOptions.width=200
     //% weight=60
     export function doorOpen(door: W26Door): void {
+        if (w26Tok("door:" + door)) return
         w26World("door_open", W26_COLOR_IDS[door])
     }
 }
@@ -574,6 +689,7 @@ namespace W26Player {
     //% n.defl=1 n.min=1 n.max=64
     //% weight=100
     export function give(item: number, n: number): void {
+        if (w26Tok("give:" + item + ":" + n)) return
         w26Person("give", w26ItemName(item) + "|" + Math.max(1, Math.round(n)))
     }
 
@@ -582,6 +698,7 @@ namespace W26Player {
     //% n.defl=1 n.min=1 n.max=64
     //% weight=95
     export function take(item: number, n: number): void {
+        if (w26Tok("take:" + item + ":" + n)) return
         // もちものから けす（Miya 11/23「けすも ほしい 個数つきで」）。もっている より 多ければ ある だけ
         w26Person("take", w26ItemName(item) + "|" + Math.max(1, Math.round(n)))
     }
@@ -592,20 +709,31 @@ namespace W26Player {
     //% level.defl=1 level.min=1 level.max=5
     //% weight=90
     export function effect(effect: W26Effect, seconds: number, level: number): void {
+        if (w26Tok("effect:" + effect + ":" + seconds + ":" + level)) return
         // つよさ 1〜5（マイクラの レベル I〜V）。上を 5で とめるのは、ジャンプ・うくが 強すぎると コースの 外へ 飛ぶため（Miya 11/23「強さも 決めたい」）
         w26Person("effect", W26_EFFECT_IDS[effect] + "|" + seconds + "|" + level)
+    }
+
+    //% blockId=w26_pparticle block="あそぶ人に $p を だす"
+    //% p.fieldEditor="imagedropdown" p.fieldOptions.columns=3 p.fieldOptions.width=192 p.fieldOptions.tooltips=true
+    //% weight=85
+    export function particle(p: W26Particle): void {
+        if (w26Tok("ppart:" + p)) return
+        w26Person("pparticle", W26_PARTICLE_IDS[p])
     }
 
     //% blockId=w26_warp block="$robo の マーカーへ テレポートさせる"
     //% robo.fieldEditor="imagedropdown" robo.fieldOptions.columns=7 robo.fieldOptions.width=350
     //% weight=80
     export function warp(robo: W26Robo): void {
+        if (w26Tok("warp:" + robo)) return
         w26Person("warp", W26_COLOR_IDS[robo])
     }
 
     //% blockId=w26_back block="スタートに もどす"
     //% weight=70
     export function back(): void {
+        if (w26Tok("back")) return
         w26Person("back", "")
     }
 
@@ -613,6 +741,7 @@ namespace W26Player {
     //% text.defl="やったね！"
     //% weight=60
     export function say(text: string): void {
+        if (w26Tok("say:" + text)) return
         w26Person("say", text)
     }
 }
@@ -623,6 +752,7 @@ namespace W26Game {
     //% seconds.defl=60 seconds.min=0 seconds.max=600
     //% weight=100
     export function setLimit(seconds: number): void {
+        if (w26Tok("limit:" + seconds)) return
         w26World("limit", "" + Math.max(0, seconds))
     }
 
@@ -630,6 +760,7 @@ namespace W26Game {
     //% n.defl=1 n.min=1
     //% weight=90
     export function point(n: number, change: W26Change): void {
+        if (w26Tok("star:" + n + ":" + change)) return
         w26Person("point", "" + (change == W26Change.Sub ? 0 - n : n))
     }
 
@@ -637,6 +768,7 @@ namespace W26Game {
     //% seconds.defl=1 seconds.min=0 seconds.max=60
     //% weight=80
     export function wait(seconds: number): void {
+        if (w26Tok("wait:" + seconds)) return
         const s = Math.max(0, seconds)
         if (w26Delay + s <= W26_DELAY_CAP) {
             w26Delay += s      // 待たない。あとの「する」が そのぶん おくれて動く（ワールドが数える）
@@ -652,6 +784,7 @@ namespace W26Game {
     //% ticks.defl=1 ticks.min=1 ticks.max=20
     //% weight=79
     export function waitTick(ticks: number): void {
+        if (w26Tok("tick:" + ticks)) return
         // 1 tick ＝ 1/20 秒（Miya 11/23「1tick まつも つくれたりしないかな」）。ワールドが 数える
         wait(Math.max(1, Math.round(ticks)) / 20)
     }
@@ -661,18 +794,26 @@ namespace W26Game {
     //% handlerStatement=1
     //% weight=70
     export function repeat(times: number, handler: () => void): void {
+        if (w26Dumping) {
+            w26Toks.push("rep:" + times)
+            handler()
+            w26Toks.push("end")
+            return
+        }
         for (let i = 0; i < times; i++) handler()
     }
 
     //% blockId=w26_clear block="クリアに する"
     //% weight=60
     export function clear(): void {
+        if (w26Tok("clear")) return
         w26Person("clear", "")
     }
 
     //% blockId=w26_gameover block="ゲームオーバーに する"
     //% weight=50
     export function gameOver(): void {
+        if (w26Tok("gameover")) return
         w26Person("gameover", "")
     }
 }

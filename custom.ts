@@ -443,8 +443,13 @@ function w26Dump(): void {
 // うごきだして すぐは とどかない ことが ある（ジュニア冬 11/24 MEE）→ 1.5びょう まって 送る
 loops.runInBackground(function () {
     loops.pause(1500)
-    player.execute("scriptevent w26:alive 0.4.8")
+    player.execute("scriptevent w26:alive 0.4.9")
     w26Dump()
+})
+// チャットで「p」（play の p）→ いま いる 製作区画を テストステージへ 出す（v0.4.9・Miya 11/24「いちいち 押しに 行かないと いけないの？」）
+// ワールドの ruin/areas.js の w26:test が 立っている 区画を 見つける。テストステージの 中で 打っても 出しなおす
+player.onChat("p", function () {
+    player.execute("scriptevent w26:test")
 })
 
 // ワールドからの よびかけに こたえる（プログラムが うごいているかを ワールドが たしかめる）。「〇秒ごとに」の秒も わたす

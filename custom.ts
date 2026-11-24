@@ -384,8 +384,88 @@ function w26Person(id: string, message: string): void {
     w26Delay = d
 }
 // イベントを、みんな（_a）と 番号ごと（_0〜_7）で うける
+// あとから 入った 人の MakeCode には ささやき（onTellCommand）が とどかない（11/24 ぷぷさんで 確かめた：歩いた・チャットは とどく）
+// → ワールドは 知らせを「ポスト」（見えない エンティティ cmk:w26_mail）に して、MakeCode が querytarget で とりに いく（v0.4.10）
+//   ポストの 場所が 何の 知らせかを あらわす：x・z ＝ 下の w26Msgs の 番号、y ＝ 来た じゅん。ワールドは w26:subs で 番号を 知る
+const W26_MAIL_X = 2000
+const W26_MAIL_Y = 100
+const W26_MAIL_Z = 2000
+const W26_MAIL_W = 128
+let w26Msgs: string[] = []           // 聞いている 知らせの 名前（番号＝ならび順）
+let w26LMsg: number[] = []           // うけ手ごとの 知らせ番号
+let w26LFn: (() => void)[] = []
+function w26Listen(msg: string, fn: () => void): void {
+    let i = w26Msgs.indexOf(msg)
+    if (i < 0) {
+        w26Msgs.push(msg)
+        i = w26Msgs.length - 1
+    }
+    w26LMsg.push(i)
+    w26LFn.push(fn)
+}
+function w26Fire(i: number): void {
+    for (let j = 0; j < w26LMsg.length; j++) {
+        if (w26LMsg[j] != i) continue
+        const f = w26LFn[j]
+        loops.runInBackground(function () { f() })
+    }
+}
+function w26Hash(s: string): number {
+    let h = 7
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 1000003
+    return h
+}
+function w26SendSubs(): void {
+    let parts: string[] = []
+    let cur = ""
+    for (let i = 0; i < w26Msgs.length; i++) {
+        if (cur.length + w26Msgs[i].length > 1200) {
+            parts.push(cur)
+            cur = ""
+        }
+        cur += (cur.length ? "," : "") + w26Msgs[i]
+    }
+    parts.push(cur)
+    for (let k = 0; k < parts.length; k++) player.execute("scriptevent w26:subs " + k + "/" + parts.length + "¦" + parts[k])
+}
+function w26Poll(): void {
+    const sel = mobs.target(TargetSelectorKind.AllEntities)
+    sel.addRule("type", "cmk:w26_mail")
+    sel.addRule("tag", "w26m" + w26Hash(player.name()))
+    let seen: string[] = []
+    while (true) {
+        const rs = mobs.queryTarget(sel)
+        if (rs.length > 0) {
+            // 来た じゅん（y）に ならべる。y は 0〜49 を まわるので、まわった 所を つなぐ
+            let ys: number[] = []
+            let lo = 99
+            let hi = -1
+            for (let k = 0; k < rs.length; k++) {
+                const y = Math.round(rs[k].y - W26_MAIL_Y)
+                ys.push(y)
+                if (y < lo) lo = y
+                if (y > hi) hi = y
+            }
+            if (hi - lo > 25) for (let k = 0; k < ys.length; k++) if (ys[k] < 25) ys[k] += 50
+            let done: boolean[] = []
+            for (let k = 0; k < rs.length; k++) done.push(false)
+            for (let n = 0; n < rs.length; n++) {
+                let b = -1
+                for (let k = 0; k < rs.length; k++) if (!done[k] && (b < 0 || ys[k] < ys[b])) b = k
+                done[b] = true
+                const r = rs[b]
+                if (seen.indexOf(r.uniqueId) >= 0) continue
+                seen.push(r.uniqueId)
+                if (seen.length > 100) seen.shift()
+                w26Fire(Math.round(r.x - 0.5 - W26_MAIL_X) + W26_MAIL_W * Math.round(r.z - 0.5 - W26_MAIL_Z))
+            }
+        }
+        loops.pause(50)
+    }
+}
+
 function w26On(name: string, handler: () => void): void {
-    player.onTellCommand(name + "_a", function () {
+    w26Listen(name + "_a", function () {
         w26Who = W26_ALL
         w26Delay = 0
         handler()
@@ -393,7 +473,7 @@ function w26On(name: string, handler: () => void): void {
     for (let i = 0; i < W26_SLOTS; i++) w26OnSlot(name, i, i, handler)
 }
 function w26OnSlot(name: string, slot: number, who: number, handler: () => void): void {
-    player.onTellCommand(name + "_" + slot, function () {
+    w26Listen(name + "_" + slot, function () {
         w26Who = who
         w26Delay = 0
         handler()
@@ -402,7 +482,7 @@ function w26OnSlot(name: string, slot: number, who: number, handler: () => void)
     })
 }
 function w26OnAll(name: string, handler: () => void): void {
-    player.onTellCommand(name, function () {
+    w26Listen(name, function () {
         w26Who = W26_ALL
         w26Delay = 0
         handler()
@@ -443,8 +523,10 @@ function w26Dump(): void {
 // うごきだして すぐは とどかない ことが ある（ジュニア冬 11/24 MEE）→ 1.5びょう まって 送る
 loops.runInBackground(function () {
     loops.pause(1500)
-    player.execute("scriptevent w26:alive 0.4.9")
+    player.execute("scriptevent w26:alive 0.4.10")
+    w26SendSubs()
     w26Dump()
+    w26Poll()
 })
 // チャットで「p」（play の p）→ いま いる 製作区画を テストステージへ 出す（v0.4.9・Miya 11/24「いちいち 押しに 行かないと いけないの？」）
 // ワールドの ruin/areas.js の w26:test が 立っている 区画を 見つける。テストステージの 中で 打っても 出しなおす
@@ -455,7 +537,7 @@ player.onChat("p", function () {
 // ワールドからの よびかけに こたえる（プログラムが うごいているかを ワールドが たしかめる）。「〇秒ごとに」の秒も わたす
 // チェストは さわった しゅんかんに 開く・開かないが きまるので、ワールドは 前もって「どの チェストに どの アイテムが いるか」を 知っておく。
 // そのため スタートの前に「チェストに さわったとき」の 中を 1回 なぞる（下見。ブロックは 何も 送らない。「もし〜もっていたら」だけ 書きとめる）
-player.onTellCommand("w26_ping", function () {
+w26Listen("w26_ping", function () {
     w26Guards = []
     for (let i = 0; i < w26TouchIds.length; i++) {
         if (w26TouchIds[i].indexOf("chest_") != 0) continue

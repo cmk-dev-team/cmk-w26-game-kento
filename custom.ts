@@ -220,6 +220,66 @@ enum W26Animal {
     //% block="ウサギ 1" jres=W26Icon.m_rabbit
     Rabbit = 26
 }
+// エフェクト・パーティクルを つける あいて（v0.4.12・Miya 11/25「つけれる エンティティを 選びたい。プレイする人も 含む」）
+// モンスター・いきものは その子の コースで 出した その しゅるいの ぜんぶ（野生・友だちの コースの 物には 効かない）
+enum W26Target {
+    //% block="あそぶ人" jres=W26Icon.t_player
+    Player = -1,
+    //% block="ゾンビ" jres=W26Icon.md_zombie
+    Zombie = 0,
+    //% block="クモ" jres=W26Icon.md_spider
+    Spider = 1,
+    //% block="スライム" jres=W26Icon.md_slime
+    Slime = 2,
+    //% block="ハスク" jres=W26Icon.md_husk
+    Husk = 3,
+    //% block="スケルトン" jres=W26Icon.md_skeleton
+    Skeleton = 4,
+    //% block="ストレイ" jres=W26Icon.md_stray
+    Stray = 5,
+    //% block="どうくつグモ" jres=W26Icon.md_cave_spider
+    CaveSpider = 6,
+    //% block="シルバーフィッシュ" jres=W26Icon.md_silverfish
+    Silverfish = 7,
+    //% block="ドラウンド" jres=W26Icon.md_drowned
+    Drowned = 8,
+    //% block="むらびとゾンビ" jres=W26Icon.md_zombie_villager
+    ZombieVillager = 9,
+    //% block="ファントム" jres=W26Icon.md_phantom
+    Phantom = 10,
+    //% block="マグマキューブ" jres=W26Icon.md_magma_cube
+    MagmaCube = 11,
+    //% block="クリーパー" jres=W26Icon.md_creeper
+    Creeper = 12,
+    //% block="ウィッチ" jres=W26Icon.md_witch
+    Witch = 13,
+    //% block="ブレイズ" jres=W26Icon.md_blaze
+    Blaze = 14,
+    //% block="エンダーマン" jres=W26Icon.md_enderman
+    Enderman = 15,
+    //% block="ピリジャー" jres=W26Icon.md_pillager
+    Pillager = 16,
+    //% block="ヴィンディケーター" jres=W26Icon.md_vindicator
+    Vindicator = 17,
+    //% block="エヴォーカー" jres=W26Icon.md_evoker
+    Evoker = 18,
+    //% block="ラヴェジャー" jres=W26Icon.md_ravager
+    Ravager = 19,
+    //% block="ウォーデン" jres=W26Icon.md_warden
+    Warden = 20,
+    //% block="ウィザー" jres=W26Icon.md_wither
+    Wither = 21,
+    //% block="ブタ" jres=W26Icon.md_pig
+    Pig = 22,
+    //% block="ニワトリ" jres=W26Icon.md_chicken
+    Chicken = 23,
+    //% block="ヒツジ" jres=W26Icon.md_sheep
+    Sheep = 24,
+    //% block="ウシ" jres=W26Icon.md_cow
+    Cow = 25,
+    //% block="ウサギ" jres=W26Icon.md_rabbit
+    Rabbit = 26
+}
 enum W26MonsterDown {
     //% block="すべて" jres=W26Icon.md_all
     All = -1,
@@ -345,6 +405,7 @@ const W26_BUTTON_IDS = ["stone", "oak", "spruce", "birch", "jungle", "acacia", "
 const W26_MONSTER_IDS = ["zombie", "spider", "slime", "husk", "skeleton", "stray", "cave_spider", "silverfish", "drowned", "zombie_villager", "phantom", "magma_cube", "creeper", "witch", "blaze", "enderman", "pillager", "vindicator", "evoker", "ravager", "warden", "wither", "pig", "chicken", "sheep", "cow", "rabbit"]
 const W26_FX_IDS = ["thunder", "firework", "boom", "minecart", "chest_minecart", "hopper_minecart", "tnt_minecart", "boat", "chest_boat"]   // のりもの（v0.4.8・Miya 11/23「トロッコ・ボートも。トロッコは 各種」）
 const W26_PARTICLE_IDS = ["heart", "sparkle", "totem", "cherry", "note", "flame", "smoke", "boom", "wind"]
+function w26TargetId(who: number): string { return who < 0 ? "player" : W26_MONSTER_IDS[who] }
 const W26_EFFECT_IDS =["jump", "speed", "slow", "float", "slowfall"]
 let w26Watch: string[] = []  // 「〔アイテム〕を 手に入れたとき・つかったとき」で 見る アイテム（番号:名前）。スタート前に ワールドに わたす
 // アイテムは ゲームの 名前で ワールドに わたす（blocks.nameOfBlock。MEE で「Wheat Seeds」「Chainmail Helmet」と 返るのを 見た・Miya 11/23）
@@ -782,7 +843,29 @@ namespace W26Player {
         w26Person("take", w26ItemName(item) + "|" + Math.max(1, Math.round(n)))
     }
 
+    //% blockId=w26_effect_to block="$who に $effect を $seconds 秒 つける　つよさ $level"
+    //% inlineInputMode=inline
+    //% who.fieldEditor="imagedropdown" who.fieldOptions.columns=7 who.fieldOptions.width=448 who.fieldOptions.tooltips=true
+    //% effect.fieldEditor="imagedropdown" effect.fieldOptions.columns=5 effect.fieldOptions.width=250
+    //% seconds.defl=5 seconds.min=1 seconds.max=60
+    //% level.defl=1 level.min=1 level.max=5
+    //% weight=90
+    export function effectTo(who: W26Target, effect: W26Effect, seconds: number, level: number): void {
+        if (w26Tok("effect2:" + who + ":" + effect + ":" + seconds + ":" + level)) return
+        w26Person("effect", W26_EFFECT_IDS[effect] + "|" + seconds + "|" + level + "|" + w26TargetId(who))
+    }
+
+    //% blockId=w26_pparticle_to block="$who に $p を だす"
+    //% who.fieldEditor="imagedropdown" who.fieldOptions.columns=7 who.fieldOptions.width=448 who.fieldOptions.tooltips=true
+    //% p.fieldEditor="imagedropdown" p.fieldOptions.columns=3 p.fieldOptions.width=192 p.fieldOptions.tooltips=true
+    //% weight=85
+    export function particleTo(who: W26Target, p: W26Particle): void {
+        if (w26Tok("ppart2:" + who + ":" + p)) return
+        w26Person("pparticle", W26_PARTICLE_IDS[p] + "|" + w26TargetId(who))
+    }
+
     //% blockId=w26_effect block="$effect を $seconds 秒 つける　つよさ $level"
+    //% deprecated=1
     //% effect.fieldEditor="imagedropdown" effect.fieldOptions.columns=5 effect.fieldOptions.width=250
     //% seconds.defl=5 seconds.min=1 seconds.max=60
     //% level.defl=1 level.min=1 level.max=5
@@ -794,6 +877,7 @@ namespace W26Player {
     }
 
     //% blockId=w26_pparticle block="あそぶ人に $p を だす"
+    //% deprecated=1
     //% p.fieldEditor="imagedropdown" p.fieldOptions.columns=3 p.fieldOptions.width=192 p.fieldOptions.tooltips=true
     //% weight=85
     export function particle(p: W26Particle): void {

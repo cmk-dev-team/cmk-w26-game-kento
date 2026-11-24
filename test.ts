@@ -19,6 +19,8 @@ W26Event.onPlate(W26Plate.Stone, function () {
 })
 W26Event.onButton(W26Button.Crimson, function () {
     W26Player.effect(W26Effect.Jump, 5, 3)
+    W26Player.effectTo(W26Target.Zombie, W26Effect.Slow, 5, 2)
+    W26Player.particleTo(W26Target.Player, W26Particle.Heart)
     W26Player.warp(W26Robo.Random)
 })
 W26Event.every(3, function () {

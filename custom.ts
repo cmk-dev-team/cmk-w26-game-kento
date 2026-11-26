@@ -784,7 +784,9 @@ namespace W26Trick {
         w26World("particle", W26_COLOR_IDS[robo] + "|" + W26_PARTICLE_IDS[p])
     }
 
+    // 一覧から 外した（11/25 Miya「きえるブロックって冷静にいらないよね」→ マーカーを ブロックに する／もとに もどす で 作る）。前の プログラムは 動く
     //% blockId=w26_floor_off block="$floor の きえるブロックを けす"
+    //% deprecated=1
     //% floor.fieldEditor="imagedropdown" floor.fieldOptions.columns=4 floor.fieldOptions.width=200
     //% weight=70
     export function floorOff(floor: W26Floor): void {
@@ -792,7 +794,9 @@ namespace W26Trick {
         w26World("floor_off", W26_COLOR_IDS[floor])
     }
 
+    // 一覧から 外した（11/25 Miya「きえるブロックって冷静にいらないよね」→ マーカーを ブロックに する／もとに もどす で 作る）。前の プログラムは 動く
     //% blockId=w26_floor_on block="$floor の きえるブロックを もどす"
+    //% deprecated=1
     //% floor.fieldEditor="imagedropdown" floor.fieldOptions.columns=4 floor.fieldOptions.width=200
     //% weight=65
     export function floorOn(floor: W26Floor): void {
@@ -952,7 +956,9 @@ namespace W26Game {
         wait(Math.max(1, Math.round(ticks)) / 20)
     }
 
+    // 一覧から 外した（11/25 Miya「1だけ同意」・11/23「〇回 くりかえす は 用意しない」）。前の プログラムは 動く
     //% blockId=w26_repeat block="$times 回 くりかえす"
+    //% deprecated=1
     //% times.defl=4 times.min=1 times.max=100
     //% handlerStatement=1
     //% weight=70
